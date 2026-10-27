@@ -1,0 +1,15 @@
+\begin{tabular}{rlrrr}
+\toprule
+$N$ & method & time (s) & energy excess & marginal error\\
+\midrule
+25 & POT CG (exact OT oracle) & 0.001 & 0 & 0\\
+ & POT entropic ($\varepsilon=0.01$) & 0.497 & $6.5\times10^{-4}$ & $7.4\times10^{-5}$\\
+ & Algorithm~1 ($\gamma=10^3$, $\varepsilon=0.01$) & 4.311 & $1.3\times10^{-4}$ & $4.6\times10^{-6}$\\
+50 & POT CG (exact OT oracle) & 0.002 & 0 & 0\\
+ & POT entropic ($\varepsilon=0.01$) & 0.405 & $6.4\times10^{-3}$ & $2.5\times10^{-5}$\\
+ & Algorithm~1 ($\gamma=10^3$, $\varepsilon=0.01$) & 10.752 & $5.7\times10^{-3}$ & $2.8\times10^{-6}$\\
+100 & POT CG (exact OT oracle) & 0.007 & 0 & 0\\
+ & POT entropic ($\varepsilon=0.01$) & 0.730 & $1.6\times10^{-2}$ & $2.1\times10^{-5}$\\
+ & Algorithm~1 ($\gamma=10^3$, $\varepsilon=0.01$) & 53.614 & $1.6\times10^{-2}$ & $2.0\times10^{-6}$\\
+\bottomrule
+\end{tabular}

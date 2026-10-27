@@ -1,0 +1,39 @@
+check,param,value
+alpha=0 vs POT sinkhorn_unbalanced,0.0,5.679900993982301e-12
+gamma sweep: max marginal violation,0.01,0.17286224749903228
+gamma sweep: max marginal violation,0.1,0.05175654212447518
+gamma sweep: max marginal violation,1.0,0.007429909191472364
+gamma sweep: max marginal violation,10.0,0.0007773819990637837
+gamma sweep: max marginal violation,100.0,9.198161937004623e-05
+gamma sweep: max marginal violation,1000.0,1.277591811735257e-05
+eps sweep: sharp value F0(P_eps),0.2,0.3467419804570814
+eps sweep: entropy of normalised coupling,0.2,3.2019043765029407
+eps sweep: wall time (s),0.2,0.011186384000211547
+eps sweep: sharp value F0(P_eps),0.1,0.1606476878365139
+eps sweep: entropy of normalised coupling,0.1,2.578236172282521
+eps sweep: wall time (s),0.1,0.01489741000000322
+eps sweep: sharp value F0(P_eps),0.05,0.11920028662445215
+eps sweep: entropy of normalised coupling,0.05,2.2830235522662186
+eps sweep: wall time (s),0.05,0.010860883000077592
+eps sweep: sharp value F0(P_eps),0.02,0.11255360096853731
+eps sweep: entropy of normalised coupling,0.02,2.1974283207300607
+eps sweep: wall time (s),0.02,0.015755441999999675
+eps sweep: sharp value F0(P_eps),0.01,0.11191832884544373
+eps sweep: entropy of normalised coupling,0.01,2.1825560725187794
+eps sweep: wall time (s),0.01,0.026179715000125725
+eps sweep: sharp value F0(P_eps),0.005,0.11177287163438034
+eps sweep: entropy of normalised coupling,0.005,2.1761386453025837
+eps sweep: wall time (s),0.005,0.051829888999918694
+eps sweep: sharp value F0(P_eps),0.002,0.11172828917089185
+eps sweep: entropy of normalised coupling,0.002,2.1713321437013704
+eps sweep: wall time (s),0.002,0.12611392200005866
+beta sweep: hard DTW - soft DTW,1.0,11.972926431996822
+beta sweep: bound beta*log(Delannoy),1.0,15.769918073354189
+beta sweep: hard DTW - soft DTW,0.1,0.22627226139279877
+beta sweep: bound beta*log(Delannoy),0.1,1.576991807335419
+beta sweep: hard DTW - soft DTW,0.01,5.839576431299065e-07
+beta sweep: bound beta*log(Delannoy),0.01,0.1576991807335419
+beta sweep: hard DTW - soft DTW,0.001,0.0
+beta sweep: bound beta*log(Delannoy),0.001,0.015769918073354188
+beta sweep: hard DTW - soft DTW,0.0001,0.0
+beta sweep: bound beta*log(Delannoy),0.0001,0.001576991807335419

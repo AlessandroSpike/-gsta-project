@@ -1,0 +1,227 @@
+{
+ "N": 86,
+ "N_original": 94,
+ "countries": [
+  "Albania",
+  "Angola",
+  "Argentina",
+  "Aruba",
+  "Australia",
+  "Belgium",
+  "Brazil",
+  "Bulgaria",
+  "Cambodia",
+  "Cameroon",
+  "China",
+  "China, Hong Kong SAR",
+  "Colombia",
+  "Cote d'Ivoire",
+  "Croatia",
+  "Cyprus",
+  "Denmark",
+  "Dominican Republic",
+  "Ecuador",
+  "Egypt",
+  "Estonia",
+  "Finland",
+  "Germany",
+  "Ghana",
+  "Greece",
+  "Grenada",
+  "Guatemala",
+  "Guyana",
+  "Honduras",
+  "Iceland",
+  "India",
+  "Indonesia",
+  "Ireland",
+  "Israel",
+  "Italy",
+  "Jamaica",
+  "Japan",
+  "Jordan",
+  "Kenya",
+  "Latvia",
+  "Lebanon",
+  "Lithuania",
+  "Malaysia",
+  "Malta",
+  "Mauritius",
+  "Mexico",
+  "Morocco",
+  "Namibia",
+  "Netherlands (Kingdom of the)",
+  "New Zealand",
+  "Nicaragua",
+  "Nigeria",
+  "Oman",
+  "Pakistan",
+  "Panama",
+  "Peru",
+  "Philippines",
+  "Poland",
+  "Portugal",
+  "Qatar",
+  "Republic of Korea",
+  "Romania",
+  "Russian Federation",
+  "Saint Lucia",
+  "Saint Vincent and the Grenadines",
+  "Samoa",
+  "Saudi Arabia",
+  "Senegal",
+  "Singapore",
+  "Slovenia",
+  "Spain",
+  "Sudan",
+  "Suriname",
+  "Sweden",
+  "Thailand",
+  "Togo",
+  "Trinidad and Tobago",
+  "Tunisia",
+  "Turkiye",
+  "Ukraine",
+  "United Arab Emirates",
+  "United Republic of Tanzania",
+  "Uruguay",
+  "Venezuela (Bolivarian Rep. of)",
+  "Viet Nam",
+  "Yemen"
+ ],
+ "dropped": {
+  "incomplete_TEU": [
+   "Algeria",
+   "Dem. Rep. of the Congo",
+   "French Polynesia",
+   "Guinea",
+   "Iran (Islamic Republic of)",
+   "Libya",
+   "Montenegro",
+   "Mozambique"
+  ],
+  "incomplete_LSCI": []
+ },
+ "winsor_log1p": [
+  0.007312873385913963,
+  3.1206068775383886
+ ],
+ "winsor_usd": [
+  0.0073396777436138235,
+  21.66012739348515
+ ],
+ "geometry_scale": 0.45451321586496657,
+ "pairs_all_years": 6165,
+ "pairs_total": 7310,
+ "imputed_share_sqfrob_original": [
+  0.8505411002853963,
+  0.860441654834595,
+  0.8357806353365357,
+  0.8507685576046798,
+  0.8373634021210521,
+  0.8163184562308903
+ ],
+ "teu_missing_original": {
+  "Algeria": [
+   2021
+  ],
+  "Dem. Rep. of the Congo": [
+   2020,
+   2021
+  ],
+  "French Polynesia": [
+   2016,
+   2017
+  ],
+  "Guinea": [
+   2021
+  ],
+  "Iran (Islamic Republic of)": [
+   2019,
+   2020,
+   2021
+  ],
+  "Libya": [
+   2018
+  ],
+  "Montenegro": [
+   2020
+  ],
+  "Mozambique": [
+   2016,
+   2017
+  ]
+ },
+ "most_missing_destination_columns_original": {
+  "Mexico": 558,
+  "Venezuela (Bolivarian Rep. of)": 558,
+  "Aruba": 504,
+  "Samoa": 332,
+  "Albania": 218
+ },
+ "yoy_sd_log_rate": [
+  0.9679371753788137,
+  0.8640725617772456,
+  0.8640175756672727,
+  0.8613995236022755,
+  0.8580730167320344
+ ],
+ "yoy_mean_log_rate": [
+  -0.23391288702034105,
+  -0.024983318060671045,
+  0.03308372346013687,
+  0.025774728969750423,
+  0.21404262583799896
+ ],
+ "corr_log_rate_years": [
+  [
+   1.0,
+   0.7469633590827772,
+   0.6969635539181204,
+   0.6631912032214539,
+   0.6472191859170884,
+   0.6072588857973596
+  ],
+  [
+   0.7469633590827772,
+   0.9999999999999998,
+   0.7805614299403643,
+   0.7222511167952359,
+   0.6892274594137496,
+   0.6426607960402069
+  ],
+  [
+   0.6969635539181204,
+   0.7805614299403643,
+   0.9999999999999998,
+   0.7707178275243536,
+   0.7345606761106765,
+   0.6910201663733009
+  ],
+  [
+   0.6631912032214539,
+   0.7222511167952359,
+   0.7707178275243536,
+   1.0,
+   0.7773030423438605,
+   0.7112508283337715
+  ],
+  [
+   0.6472191859170883,
+   0.6892274594137496,
+   0.7345606761106767,
+   0.7773030423438606,
+   0.9999999999999998,
+   0.7786223777695737
+  ],
+  [
+   0.6072588857973598,
+   0.642660796040207,
+   0.6910201663733009,
+   0.7112508283337715,
+   0.7786223777695737,
+   1.0
+  ]
+ ],
+ "eff_nodes_sqrt": 40.90871870982535
+}

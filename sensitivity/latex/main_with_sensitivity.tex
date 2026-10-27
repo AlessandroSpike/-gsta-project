@@ -1,0 +1,791 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{enumerate}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% NOTE: To produce the blinded version, replace "0" with "1" below.
+\newcommand{\blind}{1}
+
+% DON'T change margins - should be 1 inch all around.
+\addtolength{\oddsidemargin}{-.5in}%
+\addtolength{\evensidemargin}{-1in}%
+\addtolength{\textwidth}{1in}%
+\addtolength{\textheight}{1.7in}%
+\addtolength{\topmargin}{-1in}%
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+\newcommand{\KL}{\operatorname{KL}}
+\newcommand{\R}{\mathbb{R}}
+
+\begin{document}
+
+\def\spacingset#1{\renewcommand{\baselinestretch}%
+{#1}\small\normalsize} \spacingset{1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\if0\blind
+{
+  \title{\bf Graph Spatio-Temporal Alignment for Trajectories of Directed, Partially Observed Attributed Networks}
+  \author{AUTHOR NAMES AND AFFILIATIONS (unblinded version only)}
+  \maketitle
+} \fi
+
+\if1\blind
+{
+  \bigskip
+  \bigskip
+  \bigskip
+  \begin{center}
+    {\LARGE\bf Graph Spatio-Temporal Alignment for Trajectories of Directed, Partially Observed Attributed Networks}
+\end{center}
+  \medskip
+} \fi
+
+\bigskip
+\begin{abstract}
+Relational data often arrive as sequences of directed, weighted networks whose nodes carry attributes and masses and whose edges are partly unobserved. Graph spatio-temporal alignment (G-STA) compares two such trajectories by composing an entropic unbalanced fused Gromov--Wasserstein discrepancy between network states with soft dynamic time warping, debiased at both levels. We extend the adjoint-corrected gradient of the directed Gromov--Wasserstein energy to observation masks and unbalanced entropic transport at $O(N^3)$ cost, and give a generalized conditional gradient solver with a safeguarded step whose Frank--Wolfe gap is a stationarity certificate, with closed-form envelope gradients. We establish identifiability up to isomorphism under full observation, characterize its limitations under partial observation, and derive an exact decomposition of the directed structural energy into symmetric and antisymmetric components. We also give conditional non-negativity results for the doubly debiased trajectory discrepancy and characterize the behavior of a soft-alignment lead--lag index, including its boundary-induced attenuation under an idealized shift model. Building on the envelope gradients, we derive exact gradients of the debiased state discrepancy, of anomaly scores, of the doubly debiased trajectory discrepancy and of the level-adjusted lead--lag index, the last as a covariance under the Gibbs distribution over alignment paths, and bound the error of first-order predictions.
+Simulations examine the roles of directionality, mass weighting, optimization, and missing relations. An exploratory application to bilateral transport costs among 86 economies in 2016--2021 suggests gradual structural change, with a substantial contribution from relational geometry and directionality. Within the annual data and the selected specification, 2020 is not the most structurally distinctive year. About 3\% of the directed corridors, centred on the largest hubs, carry half of the local sensitivity of each annual anomaly score; targeted changes of at most 50\% to 4\% of the 2020 corridor costs would make 2020 the most distinctive year, whereas an across-the-board increase of 25\% would not.
+\end{abstract}
+
+\noindent%
+{\it Keywords:} Conditional gradient algorithm; Dynamic time warping; Gromov--Wasserstein distance; Lead--lag estimation; Optimal transport; Sensitivity analysis; Shapley attribution
+\vfill
+
+\newpage
+\spacingset{1.9} % DON'T change the spacing!
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+\label{sec:intro}
+
+Many systems studied by statisticians are observed as a sequence of networks. Trade, migration, financial exposures and transport costs are recorded period by period as directed, weighted relations between units that carry attributes (connectivity, size, sector) and a measure of importance (throughput, population, capital). Such data raise questions about \emph{trajectories} of networks rather than about a single network: which periods depart most from the others, whether a change is carried by the relational geometry, by the node attributes or by the redistribution of mass, and whether one subsystem passes through configurations that another reaches only later. Answering them requires a discrepancy between network-valued trajectories that respects edge direction, lets the total mass of the system vary, tolerates missing edges, estimates rather than fixes the temporal alignment, and can be computed, differentiated and audited reliably.
+
+Two strands of work provide the ingredients. Temporal alignment by dynamic time warping \citep[DTW;][]{sakoe1978dynamic} and its smooth relaxation soft-DTW \citep{cuturi2017soft} are standard for curves and multivariate series and connect to curve registration in functional data analysis \citep{wang1997alignment,ramsay2005functional,kneip2008combining,tang2008pairwise,marron2015functional}. Optimal transport (OT) compares distributions on a common space \citep{villani2009optimal,peyre2019computational,panaretos2019statistical}; unbalanced variants allow mass creation and destruction \citep{liero2018optimal,chizat2018scaling,chizat2018unbalanced}, and Gromov--Wasserstein (GW) transport compares spaces that are not embedded in a common one by matching their internal relations \citep{memoli2011gromov,peyre2016gromov}, including asymmetric networks \citep{chowdhury2019gromov}. Fused GW adds node attributes \citep{vayer2019optimal,vayer2020fused}, and fused unbalanced GW combines both relaxations \citep{sejourne2021unbalanced,thual2022aligning}. \citet{janati2020spatio} composed unbalanced OT on a \emph{fixed} spatial domain with soft-DTW (spatio-temporal alignment, STA). Network models for dynamic relational data \citep{hoff2002latent,sewell2015latent,matias2017statistical,kolaczyk2009statistical} and object-oriented approaches such as Fr\'echet regression and change-point detection \citep{petersen2019frechet,dubey2020frechet,chen2023wasserstein} are complementary: they posit a generative structure or a metric, whereas we construct a computable, auditable discrepancy between trajectories.
+
+G-STA replaces the fixed spatial layer of STA by a directed, masked, entropic unbalanced fused GW (UFGW) problem between network states. Our contributions are as follows.
+
+\begin{enumerate}[(i)]
+\item \emph{Computation for directed, masked, unbalanced problems.} The gradient of the directed GW energy $Q(P)=\sum w_{ik}w'_{jl}(c_{ik}-d_{jl})^2p_{ij}p_{kl}$ is $T(P)+T^\ast(P)$, where $T^\ast$ uses transposed geometries, and not the expression $2T(P)$ that is exact for symmetric geometries. This adjoint correction is implemented for balanced GW with asymmetric matrices in the POT library \citep{flamary2021pot}; we give the factorization with observation masks at $O(N^3)$ cost and use it in an unbalanced entropic solver (Lemma~\ref{lem:grad}).
+\item \emph{A solver whose guarantees match its implementation.} A generalized conditional gradient method with a closed-form safeguarded step decreases the objective monotonically; its Frank--Wolfe gap tends to zero and bounds the Kullback--Leibler divergence between the iterate and its oracle image (Proposition~\ref{prop:gcg}). Closed-form envelope gradients hold along the selected stationary branch (Proposition~\ref{prop:envelope}). Because the problem is non-convex, we distinguish the global optimum from the value returned by a deterministic multi-start portfolio and report diagnostics for the latter.
+\item \emph{Structure of the discrepancy.} Non-negativity, symmetry and identifiability up to isomorphism, and what partial observation makes unidentifiable (Proposition~\ref{prop:basic}, Corollary~\ref{cor:mask}); an exact decomposition of the directed energy into symmetric and antisymmetric parts (Proposition~\ref{prop:decomp}); a sufficient condition for non-negativity of the doubly debiased G-STA discrepancy, checked on the data; and the precise sense in which STA is a special case (Propositions~\ref{prop:gsta}--\ref{prop:sta}).
+\item \emph{Lead--lag.} For a soft-alignment lead--lag index we prove exact antisymmetry, show that a constant offset between two networks drives it to zero, give a pathwise bound valid at every temperature, and derive the zero-temperature attenuation of a pure shift together with the range of shifts for which it holds (Proposition~\ref{prop:leadlag}).
+\item \emph{Sensitivity.} Exact gradients of the debiased discrepancy, which must account for both arguments of the self-comparison; of anomaly scores and of the doubly debiased G-STA discrepancy, in which state-level gradients are weighted by expected alignment frequencies; and of the level-adjusted lead--lag index, through covariances of the Gibbs distribution over alignment paths. A frozen-coupling bound controls the error of first-order predictions of state-level values, and budgeted counterfactual perturbations are evaluated by full re-optimization (Propositions~\ref{prop:graddelta}--\ref{prop:local}).
+\item \emph{Evidence.} Verification against explicit tensors, exhaustive path enumeration and re-solved finite differences, including the new gradients; an audit of the implemented algorithm; benchmarks; simulations of detection, lead--lag estimation and missing edges; and an exploratory application to bilateral transport costs among 86 economies, with influence measures and counterfactual stress tests.
+\end{enumerate}
+
+Section~\ref{sec:framework} defines the state-level quantities, Section~\ref{sec:computation} the algorithm, Section~\ref{sec:temporal} the temporal layer and its sensitivity analysis, Section~\ref{sec:sim} the numerical studies, Section~\ref{sec:app} the application and Section~\ref{sec:disc} limitations. Proofs, algorithmic details and additional results are in the Supplementary Material.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Network states and the unbalanced fused Gromov--Wasserstein problem}
+\label{sec:framework}
+
+\subsection{Attributed relational states}
+
+\begin{definition}[State and trajectory]\label{def:state}
+A \emph{state} on $V=\{1,\dots,n\}$ is $G=(\mu,F,C,W)$, with node masses $\mu\in(0,\infty)^n$, node attributes $F=(f_1,\dots,f_n)^\top\in\R^{n\times K}$, a possibly asymmetric relational matrix $C=(c_{ik})\in\R^{n\times n}$ (here the cost of moving goods from $i$ to $k$, with $c_{ii}=0$), and observation weights $W\in[0,1]^{n\times n}$ with $w_{ik}=0$ if $c_{ik}$ is missing and $w_{ii}=1$. A \emph{trajectory} is a sequence $\mathcal G=(G_1,\dots,G_T)$ of states.
+\end{definition}
+
+Masses need not sum to one, so a system may expand or contract; the node sets of two compared states may differ, in which case $H=(\nu,G,D,W')$ lives on $\{1,\dots,m\}$. A feature cost $M_{ij}=m(f_i,g_j)\ge0$ with $m(f,g)=0$ if and only if $f=g$ compares attributes; we use $m(f,g)=\|f-g\|^2$.
+
+\subsection{The directed, masked UFGW problem}
+
+For a coupling $P\in\R_+^{n\times m}$ define the structural energy and the unregularized objective
+\begin{align}
+Q(P)&=\sum_{i,k=1}^n\sum_{j,l=1}^m w_{ik}w'_{jl}\,(c_{ik}-d_{jl})^2\,p_{ij}p_{kl}, \label{eq:Q}\\
+J_0(P)&=(1-\alpha)\langle M,P\rangle+\alpha\,Q(P)+\gamma\KL(P\mathbf 1\,|\,\mu)+\gamma\KL(P^\top\mathbf 1\,|\,\nu), \label{eq:J0}
+\end{align}
+with $\alpha\in[0,1]$, $\gamma>0$ and the generalized Kullback--Leibler divergence $\KL(a|b)=\sum_i a_i\log(a_i/b_i)-a_i+b_i$. Let $D_0(G,H)=\min_{P\ge0}J_0(P)$. The masks make $Q$ compare only relations observed in both states, so a missing relation is neither used nor fabricated. With linear marginal penalties and a quadratic energy, the objective is a masked, directed instance of the fused unbalanced GW problem of \citet{thual2022aligning}, rather than the conic formulation of \citet{sejourne2021unbalanced}.
+
+\begin{proposition}[Basic properties and identifiability]\label{prop:basic}
+(a) The minimum defining $D_0$ is attained and $D_0(G,H)\ge0$. (b) $D_0(G,H)=D_0(H,G)$. (c) $D_0(G,G)=0$. (d) Let $\alpha\in(0,1)$, let all weights in $W$ and $W'$ be positive, and let the attributes within each state be pairwise distinct. Then $D_0(G,H)=0$ if and only if $n=m$ and there is a permutation $\sigma$ of $\{1,\dots,n\}$ with $\nu_{\sigma(i)}=\mu_i$, $g_{\sigma(i)}=f_i$ and $d_{\sigma(i)\sigma(k)}=c_{ik}$ for all $i,k$.
+\end{proposition}
+
+Part~(d) requires full observation. With masks, only relations observed in both states are identified:
+
+\begin{corollary}[Partial observation]\label{cor:mask}
+Under the conditions of Proposition~\ref{prop:basic}(d), except that $W$ and $W'$ may contain zeros off the diagonal, $D_0(G,H)=0$ if and only if $n=m$ and there is a permutation $\sigma$ with $\nu_{\sigma(i)}=\mu_i$, $g_{\sigma(i)}=f_i$ and $c_{ik}=d_{\sigma(i)\sigma(k)}$ for every pair with $w_{ik}w'_{\sigma(i)\sigma(k)}>0$. In particular, when identities persist ($g_i=f_i$), $D_0(G,H)$ does not depend on $d_{ik}$ for any pair unobserved in either state, and a change confined to such pairs cannot be detected.
+\end{corollary}
+
+When identities persist and attributes are unchanged and distinct, a change confined to relations observed in both states is therefore detected by $D_0$ for every $\alpha\in(0,1)$, whereas it is invisible to every attribute-and-mass discrepancy, including $\alpha=0$.
+
+\begin{proposition}[Directed energy decomposition]\label{prop:decomp}
+Write $C^{S}=(C+C^\top)/2$ and $C^{A}=(C-C^\top)/2$, and similarly for $D$. If $W=W^\top$ and $W'=W'^\top$, then for every coupling $P$, $Q_{C,D}(P)=Q_{C^S,D^S}(P)+Q_{C^A,D^A}(P)$, and both terms are non-negative. Consequently, the objective computed from symmetrized geometries equals the directed objective minus $\alpha\,Q_{C^A,D^A}(P)$.
+\end{proposition}
+
+The antisymmetric energy is the information a symmetrized analysis ignores. With asymmetric masks we evaluate the split on the pairs observed in both directions, $W\circ W^\top$.
+
+\subsection{Entropic regularization and the debiased discrepancy}
+
+Let $E(P)=\sum_{ij}p_{ij}(\log p_{ij}-1)$ and, for $\varepsilon>0$,
+\begin{equation}\label{eq:Jeps}
+J_\varepsilon(P)=J_0(P)+\varepsilon E(P),\qquad V_\varepsilon(G,H)=\min_{P\ge0}J_\varepsilon(P).
+\end{equation}
+
+\begin{proposition}[Existence and interiority]\label{prop:exist}
+$J_\varepsilon$ is continuous on $\R_+^{n\times m}$, coercive and bounded below; its minimum is attained, and every local minimizer has strictly positive entries and satisfies $\nabla J_\varepsilon(P)=0$. As $\varepsilon\downarrow0$, $V_\varepsilon\to D_0$ and every cluster point of global minimizers of $J_\varepsilon$ minimizes $J_0$.
+\end{proposition}
+
+Because $E(P)<0$ for small entries, $V_\varepsilon(G,G)\neq0$ in general. Following the Sinkhorn divergences of \citet{genevay2018learning}, \citet{feydy2019interpolating} and \citet{sejourne2019sinkhorn}, we define the \emph{debiased discrepancy}
+\begin{equation}\label{eq:delta}
+\Delta_\varepsilon(G,H)=V_\varepsilon(G,H)-\tfrac12V_\varepsilon(G,G)-\tfrac12V_\varepsilon(H,H).
+\end{equation}
+We use the word discrepancy deliberately. $\Delta_\varepsilon$ is symmetric and vanishes on the diagonal, but, unlike its balanced OT analogue, it is not guaranteed to be non-negative for GW-type energies, and no triangle inequality is claimed; it is neither a divergence nor a metric in general. The properties that hold unconditionally are symmetry, $\Delta_\varepsilon(G,G)=0$, and $\Delta_\varepsilon(G,H)\to D_0(G,H)\ge0$ as $\varepsilon\downarrow0$. We report the sign of every computed entry and do not truncate negative values; none occurred in this paper.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Computation}
+\label{sec:computation}
+
+\subsection{The gradient of the directed energy}
+
+Define $T(P)_{ij}=\sum_{k,l}w_{ik}w'_{jl}(c_{ik}-d_{jl})^2p_{kl}$ and $T^\ast(P)_{ij}=\sum_{k,l}w_{ki}w'_{lj}(c_{ki}-d_{lj})^2p_{kl}$, so that $Q(P)=\langle T(P),P\rangle$ and $T^\ast$ is the adjoint of $T$.
+
+\begin{lemma}[Gradient and cubic-time evaluation]\label{lem:grad}
+(a) $\nabla Q(P)=T(P)+T^\ast(P)$, and $Q(P+\tau D)=Q(P)+\tau\langle\nabla Q(P),D\rangle+\tau^2Q(D)$. (b) If $C$, $D$, $W$ and $W'$ are symmetric then $T^\ast=T$ and $\nabla Q=2T$; for asymmetric geometries $2T(P)\neq\nabla Q(P)$ in general. (c) With $\circ$ the entrywise product,
+\[
+T(P)=(W\circ C^{\circ2})\,P\,W'^\top-2\,(W\circ C)\,P\,(W'\circ D)^\top+W\,P\,(W'\circ D^{\circ2})^\top ,
+\]
+and $T^\ast(P)$ is obtained by transposing $C,D,W,W'$. Each requires six matrix products, $O(n^2m+nm^2)$ operations instead of the $O(n^2m^2)$ of the tensor contraction.
+\end{lemma}
+
+The cubic factorization for fully observed symmetric matrices is due to \citet{peyre2016gromov}, and the adjoint correction for asymmetric matrices in the balanced case is implemented in POT. Part~(b) matters because $L_{ijkl}=(c_{ik}-d_{jl})^2$ is symmetric under $(i,j)\leftrightarrow(k,l)$ only when $C$ and $D$ are; a solver that uses $2T(P)$ for directed data solves the wrong stationarity equation (Section~\ref{sec:verif}).
+
+\subsection{A generalized conditional gradient algorithm with a safeguarded step}
+
+Split $J_\varepsilon=f+g$ into the smooth non-convex part $f(P)=(1-\alpha)\langle M,P\rangle+\alpha Q(P)$ and the convex part $g(P)=\gamma\KL(P\mathbf1|\mu)+\gamma\KL(P^\top\mathbf1|\nu)+\varepsilon E(P)$. A generalized conditional gradient (GCG) method \citep{bredies2009generalized,rakotomamonjy2015generalized} linearizes $f$ only; each iteration solves a strictly convex entropic unbalanced OT problem with cost $\nabla f(P)$ by log-domain scaling \citep{chizat2018scaling}. Along the direction $D=Q-P$, $f$ is exactly quadratic, $f(P+\tau D)=f(P)+b\tau+a\tau^2$ with $b=\langle\nabla f(P),D\rangle$ and $a=\alpha Q(D)$, and convexity of $g$ gives the majorant $J_\varepsilon(P+\tau D)\le U(\tau)=J_\varepsilon(P)-\tau\,\mathrm{gap}(P)+a\tau^2$ on $[0,1]$. Its minimizer $\tau_{\mathrm{ub}}$ is available in closed form and provides the decrease used in the convergence proof; a refined step is accepted only if it does at least as well (Algorithm~\ref{alg:gcg}).
+
+\begin{algorithm}[t]
+\caption{Generalized conditional gradient with safeguarded step for $J_\varepsilon$}\label{alg:gcg}
+\begin{algorithmic}[1]
+\Require masses $\mu,\nu$; costs $M$; geometries $C,D$; masks $W,W'$; $\alpha,\gamma,\varepsilon$; initial $P^{(0)}>0$; tolerance $\eta$
+\For{$r=0,1,2,\dots$}
+\State $K\gets(1-\alpha)M+\alpha\{T(P^{(r)})+T^\ast(P^{(r)})\}$ \Comment{$\nabla f(P^{(r)})$, Lemma~\ref{lem:grad}}
+\State $Q^{(r)}\gets\arg\min_{Q\ge0}\langle K,Q\rangle+g(Q)$ \Comment{unbalanced scaling, $Q_{ij}=e^{(\phi_i+\psi_j-K_{ij})/\varepsilon}$}
+\State $\mathrm{gap}_r\gets\langle K,P^{(r)}-Q^{(r)}\rangle+g(P^{(r)})-g(Q^{(r)})$; \textbf{stop} if $\mathrm{gap}_r\le\eta\max\{1,|J_\varepsilon(P^{(r)})|\}$
+\State $D\gets Q^{(r)}-P^{(r)}$;\; $a\gets\alpha Q(D)$;\; $\tau_{\mathrm{ub}}\gets1$ if $a\le0$, else $\min\{1,\mathrm{gap}_r/(2a)\}$
+\State $\tau_{\mathrm{ref}}\gets$ bisection on $\tfrac{d}{d\tau}J_\varepsilon(P^{(r)}+\tau D)$ if $a\ge0$; grid and golden-section search if $a<0$
+\State $\tau_r\gets\tau_{\mathrm{ref}}$ if $J_\varepsilon(P^{(r)}+\tau_{\mathrm{ref}}D)\le J_\varepsilon(P^{(r)}+\tau_{\mathrm{ub}}D)$, else $\tau_{\mathrm{ub}}$;\; $P^{(r+1)}\gets P^{(r)}+\tau_rD$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+When $a\ge0$ the one-dimensional problem is convex and the bisection finds its minimizer; when $a<0$, which is the common case in our audit, it may have two local minima and the grid search is a heuristic. This is why the safeguard is needed.
+
+\begin{proposition}[Descent and stationarity certificate]\label{prop:gcg}
+Let $Q(P)$ denote the oracle output at $P$. (a) $\mathrm{gap}(P)\ge\varepsilon\,\KL(P\,|\,Q(P))\ge0$, and $\mathrm{gap}(P)=0$ if and only if $\nabla J_\varepsilon(P)=0$. (b) Every iteration of Algorithm~\ref{alg:gcg} satisfies $J_\varepsilon(P^{(r+1)})\le J_\varepsilon(P^{(r)})-\min\{\mathrm{gap}_r/2,\ \mathrm{gap}_r^2/(4a_r)\}$ if $a_r>0$, and $J_\varepsilon(P^{(r+1)})\le J_\varepsilon(P^{(r)})-\mathrm{gap}_r$ if $a_r\le0$. (c) The iterates remain in the compact sublevel set $\{J_\varepsilon\le J_\varepsilon(P^{(0)})\}$, $\mathrm{gap}_r\to0$, and every limit point is a strictly positive stationary point of $J_\varepsilon$.
+\end{proposition}
+
+The gap therefore certifies stationarity in a precise sense: it vanishes exactly at stationary points, and a small gap bounds the Kullback--Leibler divergence between the iterate and the solution of the linearized problem at it. It does not by itself bound the Euclidean norm of the gradient by the same tolerance. Such a bound, of order $\mathrm{gap}^{1/2}$, holds when the coupling entries are bounded away from zero (Supplement~S1), but entropic couplings have vanishingly small entries and the constant is then uninformative. We therefore report independently evaluated residuals $\|\nabla J_\varepsilon\|_\infty$ alongside the gap. Neither quantity certifies global optimality, which is NP-hard to establish for quadratic assignment-type problems \citep{burkard1998quadratic}.
+
+\subsection{Non-convexity: global optimum and portfolio estimate}\label{sec:multistart}
+
+Because $Q$ is indefinite, different initial couplings lead to different stationary points. We therefore distinguish the global optimum $V_\varepsilon$ in~\eqref{eq:Jeps} from the computed \emph{portfolio estimate} $\widehat V_\varepsilon(G,H)$, the smallest value returned by Algorithm~\ref{alg:gcg} from a fixed, data-determined portfolio of initial couplings: the identity coupling $\operatorname{diag}(\sqrt{\mu\circ\nu})$ when node sets coincide; the product coupling; the solution of the convex $\alpha=0$ problem; a quantile coupling matching nodes in attribute order; and an entropic continuation in which $\varepsilon$ is decreased from $1$ to its target value. Each candidate is a stationary value and an upper bound, so $\widehat V_\varepsilon\ge V_\varepsilon$, with equality if the portfolio reaches a global minimizer, which cannot be certified. All computed quantities, including $\widehat\Delta_\varepsilon$, defined as in~\eqref{eq:delta} with $\widehat V_\varepsilon$, use the portfolio estimate; we drop the hat in the empirical sections. The procedure is deterministic and equivariant under exchanging $G$ and $H$, so $\widehat V_\varepsilon$ is symmetric to machine precision and $\widehat\Delta_\varepsilon(G,G')=0$ whenever $G'$ is a copy of $G$. These properties of the computed quantity hold by construction; properties of $V_\varepsilon$ (Proposition~\ref{prop:exist}) transfer to $\widehat V_\varepsilon$ only when the portfolio attains the global minimum. We assess the portfolio by adding deterministic random initializations, seeded by the pair of states so that symmetry is preserved, and by recording how often and by how much they improve the estimate (Section~\ref{sec:verif}).
+\begin{proposition}[Propagation of optimization error]
+\label{prop:optimization-error}
+For each pair of states $(G,H)$, write $\widehat V_\varepsilon(G,H)=V_\varepsilon(G,H)+e_\varepsilon(G,H)$, where $e_\varepsilon(G,H)\geq0$ denotes the optimization error of the multi-start portfolio.\\
+Then the computed debiased discrepancy satisfies $\widehat\Delta_\varepsilon(G,H)-\Delta_\varepsilon(G,H)=e_\varepsilon(G,H)-\frac12e_\varepsilon(G,G)-\frac12e_\varepsilon(H,H)$. Consequently, $\bigl|\widehat\Delta_\varepsilon(G,H)-\Delta_\varepsilon(G,H)\bigr|\leq e_\varepsilon(G,H)+\frac12e_\varepsilon(G,G)+\frac12e_\varepsilon(H,H)$. In particular, the computed debiased discrepancy is neither necessarily an upper bound nor necessarily a lower bound on the globally optimized discrepancy.
+\end{proposition}
+The Frank--Wolfe gap certifies approximate stationarity of the computed coupling, but does not provide a bound on the global optimization error $e_\varepsilon(G,H)$.
+The difference between the standard portfolio value and the best value found after additional initializations measures the improvement obtained by expanding the search. It is not an upper bound on the remaining global optimization error.
+Accordingly, numerical stability across initializations should be distinguished from certified global optimality.
+
+\subsection{Envelope gradients}
+
+Write $r=P\mathbf1$ and $c=P^\top\mathbf1$.
+
+\begin{proposition}[Closed-form envelope gradients]\label{prop:envelope}
+Let $\theta=(F,G,C,D,\mu,\nu)$ and let $P^\star$ be a stationary point of $J_\varepsilon(\cdot;\theta_0)$ at which $\nabla^2_PJ_\varepsilon$ is non-singular. Then there is a unique continuously differentiable branch $\theta\mapsto P^\star(\theta)$ of stationary points through $P^\star$, and $v(\theta)=J_\varepsilon(P^\star(\theta);\theta)$ satisfies $\nabla_\theta v(\theta_0)=\partial_\theta J_\varepsilon(P^\star;\theta_0)$, namely
+\begin{align*}
+\nabla_C v&=2\alpha\,W\circ\{C\circ(P^\star W'P^{\star\top})-P^\star(W'\circ D)P^{\star\top}\},&
+\nabla_\mu v&=\gamma(\mathbf 1-r/\mu),\\
+\nabla_D v&=2\alpha\,W'\circ\{D\circ(P^{\star\top}WP^\star)-P^{\star\top}(W\circ C)P^\star\},&
+\nabla_\nu v&=\gamma(\mathbf 1-c/\nu),\\
+\nabla_F v&=2(1-\alpha)\{\operatorname{diag}(r)F-P^\star G\},&
+\nabla_G v&=2(1-\alpha)\{\operatorname{diag}(c)G-P^{\star\top}F\}.
+\end{align*}
+\end{proposition}
+
+Without masks $\nabla_Cv=2\alpha(C\circ rr^\top-P^\star DP^{\star\top})$; weighting the source geometry by $rc^\top$ instead of $rr^\top$ is incorrect when $r\neq c$. The proposition concerns the value of a branch of stationary points. The portfolio estimate is the minimum of finitely many such branch values: where the minimizing candidate is unique and non-degenerate, $\widehat V_\varepsilon$ is differentiable and the formulas give its gradient; where two candidates tie, $\widehat V_\varepsilon$ may have a kink and is only directionally differentiable. The formulas concern the regularized value, not $J_0$ evaluated at the entropic coupling \citep[compare][]{luise2018differential}. Gradients of~\eqref{eq:delta}, of anomaly scores, of G-STA and of the lead--lag index, and the accuracy of first-order predictions, are derived in Section~\ref{sec:sensitivity}; whether a perturbation changes the selected branch is checked by re-solving.
+
+\subsection{Cost}
+Each GCG iteration costs $O(n^2m+nm^2)$ for $T$ and $T^\ast$ and $O(nm)$ per scaling iteration; in our benchmarks the scaling oracle accounts for most of the time (Section~\ref{sec:verif}). A trajectory comparison requires $TS$ cross-terms and $T+S$ self-terms ($T(T+1)/2$ terms for a self-comparison), which can be computed in parallel. Low-rank couplings \citep{scetbon2022linear} and translation-invariant unbalanced scaling \citep{sejourne2022faster} are compatible accelerations.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Temporal alignment and lead--lag estimation}
+\label{sec:temporal}
+
+\subsection{Soft dynamic time warping}
+
+Let $\mathcal A_{T,S}$ be the set of monotone alignment paths from $(1,1)$ to $(T,S)$ with steps $(1,0)$, $(0,1)$ and $(1,1)$, each represented by a binary matrix $A$ with path length $|A|$. For $\Delta\in\R^{T\times S}$, soft-DTW is \citep{cuturi2017soft} $\mathcal A_\beta(\Delta)=-\beta\log\sum_{A\in\mathcal A_{T,S}}\exp(-\langle A,\Delta\rangle/\beta)$, $\beta>0$.
+
+\begin{proposition}[Soft alignment facts]\label{prop:sdtw}
+(a) $|\mathcal A_{T,S}|=\mathcal D(T-1,S-1)$, the Delannoy number \citep{banderier2005delannoy}. (b) $\min_A\langle A,\Delta\rangle-\beta\log\mathcal D(T-1,S-1)\le\mathcal A_\beta(\Delta)\le\min_A\langle A,\Delta\rangle$. (c) $E=\nabla\mathcal A_\beta(\Delta)$ is the expected alignment matrix under the Gibbs distribution $p_\beta(A)\propto e^{-\langle A,\Delta\rangle/\beta}$; $E\in[0,1]^{T\times S}$, $E_{11}=E_{TS}=1$, and $\sum_{ts}E_{ts}=\mathbb E_\beta|A|$. (d) $\mathcal A_\beta(\Delta^\top)=\mathcal A_\beta(\Delta)$ and $\nabla\mathcal A_\beta(\Delta^\top)=E^\top$. (e) If $T=S\ge2$, $\Delta\ge0$ and $\Delta_{tt}=0$, then $-\beta\log\mathcal D(T-1,T-1)\le\mathcal A_\beta(\Delta)<0$.
+\end{proposition}
+
+\subsection{Graph spatio-temporal alignment}
+
+\begin{definition}[G-STA]\label{def:gsta}
+For trajectories $\mathcal G=(G_t)_{t\le T}$ and $\mathcal H=(H_s)_{s\le S}$ let $\Delta^{\mathcal G\mathcal H}_{ts}=\Delta_\varepsilon(G_t,H_s)$. The doubly debiased G-STA discrepancy is
+$\widehat{\mathrm{GSTA}}(\mathcal G,\mathcal H)=\mathcal A_\beta(\Delta^{\mathcal G\mathcal H})-\tfrac12\mathcal A_\beta(\Delta^{\mathcal G\mathcal G})-\tfrac12\mathcal A_\beta(\Delta^{\mathcal H\mathcal H})$.
+\end{definition}
+
+\begin{proposition}[Properties of G-STA]\label{prop:gsta}
+Let $\mathcal G$ and $\mathcal H$ be network-valued
+trajectories, and let $\Delta_\varepsilon$ be the
+symmetric state-level discrepancy defined in (4).
+
+\begin{enumerate}
+\item[(a)]
+The doubly debiased discrepancy satisfies
+$
+\widehat{\mathrm{GSTA}}(\mathcal G,\mathcal H)
+=
+\widehat{\mathrm{GSTA}}(\mathcal H,\mathcal G),
+\
+\widehat{\mathrm{GSTA}}(\mathcal G,\mathcal G)=0.
+$
+
+\item[(b)]
+Define the state kernel
+$
+k_\beta(G,H)
+=
+\exp\left\{-\frac{\Delta_\varepsilon(G,H)}
+{\beta}\right\}
+$
+and the alignment kernel
+$
+K_\beta(\mathcal G,\mathcal H)
+=
+\sum_{A\in\mathcal A_{T,S}}
+\prod_{(t,s)\in A}
+k_\beta(G_t,H_s).
+$
+Then
+\[
+\widehat{\mathrm{GSTA}}(\mathcal G,\mathcal H)
+=
+-\beta\log
+\frac{K_\beta(\mathcal G,\mathcal H)}
+{\sqrt{
+K_\beta(\mathcal G,\mathcal G)
+K_\beta(\mathcal H,\mathcal H)}}.
+\]
+If $K_\beta$ is a positive-semidefinite kernel
+on a collection of trajectories, then
+$
+\widehat{\mathrm{GSTA}}(\mathcal G,\mathcal H)
+\geq 0
+$
+for every pair in that collection.
+\end{enumerate}
+\end{proposition}
+
+The positive-semidefiniteness of the state kernel
+$k_\beta$ does not, by itself, establish the
+positive-semidefiniteness of the alignment kernel
+$K_\beta$ without an appropriate
+kernel-preservation result.
+Accordingly, the non-negativity statement above
+is conditional on the alignment kernel itself
+being positive semidefinite.
+For a finite collection of trajectories
+$\mathcal G^{(1)},\ldots,\mathcal G^{(R)}$,
+this condition can be checked directly by
+forming the symmetric Gram matrix
+\[
+\mathbf K_\beta
+=
+\left[
+K_\beta(\mathcal G^{(a)},\mathcal G^{(b)})
+\right]_{a,b=1}^{R}.
+\]
+If $\mathbf K_\beta\succeq0$, the
+Cauchy--Schwarz inequality establishes
+non-negativity for every pair of trajectories
+in the collection.
+Positive semidefiniteness of a finite Gram
+matrix does not establish the corresponding
+property on the space of all possible
+network-valued trajectories.
+
+\begin{proposition}[STA as a special case]\label{prop:sta}
+Suppose $\alpha=0$, the attributes are time-invariant coordinates $f_{t,i}=x_i$, and $m(x_i,x_j)=C^{\mathrm{sp}}_{ij}$ for a fixed spatial ground cost. Then $V_\varepsilon(G_t,H_s)$ is the entropic unbalanced OT cost between $\mu_t$ and $\nu_s$ with ground cost $C^{\mathrm{sp}}$, and G-STA coincides with STA \citep{janati2020spatio} computed with this spatial layer. If $\alpha\in(0,1)$ and the conditions of Proposition~\ref{prop:basic}(d) hold, two states that differ only in their geometry have $D_0>0$, hence $\Delta_\varepsilon>0$ for all sufficiently small $\varepsilon$, whereas every $\alpha=0$ discrepancy, and therefore STA, assigns them zero.
+\end{proposition}
+
+\subsection{Lead--lag estimation}
+
+\begin{definition}[Lead--lag index]\label{def:leadlag}
+With $E=\nabla\mathcal A_\beta(\Delta^{\mathcal G\mathcal H})$, let $\tau(\mathcal G,\mathcal H)=\sum_{t,s}(s-t)E_{ts}/\sum_{t,s}E_{ts}$, the ratio of the expected total offset to the expected path length under the Gibbs distribution. A positive value means that states of $\mathcal G$ are matched with later states of $\mathcal H$, that is, $\mathcal G$ \emph{leads} $\mathcal H$ in the sense of alignment. It is an index of temporal precedence of similar configurations, not of causal transmission.
+\end{definition}
+
+If $H_s=G_{s-\ell}$, so that $\mathcal H$ reproduces with a delay what $\mathcal G$ did, the cheap cells are $(t,t+\ell)$ and $\tau>0$.
+
+\begin{proposition}[Lead--lag properties]\label{prop:leadlag}
+(a) If $\Delta^{\mathcal H\mathcal G}=(\Delta^{\mathcal G\mathcal H})^\top$, then $\tau(\mathcal H,\mathcal G)=-\tau(\mathcal G,\mathcal H)$; in particular $\tau(\mathcal G,\mathcal G)=0$. (b) Adding a constant $\kappa>0$ to every entry of $\Delta$ multiplies the Gibbs weight of each path $A$ by $e^{-\kappa|A|/\beta}$; as $\kappa\to\infty$ the distribution concentrates on the shortest paths and, when $T=S$, $\tau\to0$. (c) Let $T=S$. For every path, $|\sum_{(t,s)\in A}(s-t)|\le(T-1)(|A|-T)$, with equality for the path that takes its $|A|-T$ horizontal steps first and its vertical steps last; consequently, for every $\beta>0$, $|\tau|\le(T-1)\{1-T/\sum_{ts}E_{ts}\}$. (d) Let $T=S$, $0\le\ell<T$, and let $\Delta_{ts}=0$ if $s-t=\ell$ and $\Delta_{ts}=\kappa>0$ otherwise (an idealized pure shift). If $2\ell<T$, the unique minimizing path takes $\ell$ horizontal steps, then $T-1-\ell$ diagonal steps, then $\ell$ vertical steps, and $\tau\to\ell(T-1)/(T+\ell)$ as $\beta/\kappa\to0$. If $2\ell>T$, the unique minimizing path is the diagonal and $\tau\to0$.
+\end{proposition}
+
+Part~(b) has a practical consequence: when two \emph{different} networks are compared, $\Delta^{\mathcal G\mathcal H}$ contains a common offset that carries no timing information but shrinks $\tau$ toward zero; we therefore compute $\tau$ from the level-adjusted matrix $\Delta^{\mathcal G\mathcal H}-\min_{t,s}\Delta^{\mathcal G\mathcal H}_{ts}$, with $\beta$ equal to one tenth of its median entry, which makes $\tau$ invariant to the scale and level of $\Delta$. Part~(c) holds at every temperature and for every cost matrix: a large $|\tau|$ requires long, warped alignment paths. Part~(d) describes the boundary attenuation of a pure shift: in the zero-temperature limit $\tau$ equals $\ell(T-1)/(T+\ell)$ rather than $\ell$, because the path must start at $(1,1)$ and end at $(T,T)$. Inverting this map gives the boundary-corrected lead
+\begin{equation}\label{eq:corrected}
+\hat\ell=T\tau/(T-1-|\tau|).
+\end{equation}
+The correction is exact only in the idealized zero-temperature setting of part~(d) and only for $2\ell<T$; beyond that range the shifted path ceases to be optimal for the idealized cost and the shift is no longer reflected in $\tau$. For other cost structures and finite $\beta$ it is an approximation whose accuracy we evaluate by simulation (Section~\ref{sec:simll}). Exhaustive enumeration of all paths confirms part~(d) to machine precision and shows that for $\beta/\kappa\le0.1$ the finite-temperature value agrees with the zero-temperature value to at least four decimals (Supplement~S3).
+
+\subsection{Summaries of a single trajectory}\label{sec:summaries}
+
+For a self-comparison $\Delta=\Delta^{\mathcal G\mathcal G}$ we use the \emph{anomaly score} $a(t)=(T-1)^{-1}\sum_{s\ne t}\Delta_{ts}$ and the \emph{trend-adjusted score} $\tilde a(t)$, the average of the residuals $\Delta_{ts}-\bar\Delta(|t-s|)$ from the lag profile $\bar\Delta(h)=\operatorname{mean}\{\Delta_{ts}:|t-s|=h\}$, which removes the advantage of the end points under gradual drift. \emph{Trajectory maps} are classical multidimensional scaling \citep{torgerson1952multidimensional} of $\Delta$; they visualize pairwise dissimilarities and are not evidence of a Euclidean geometry, so we report the eigenvalues of $-\frac12J\Delta J$ ($J$ the centering matrix), the share of the positive spectrum displayed and the stress of the two-dimensional embedding. Because $V_\varepsilon$ is a sum of four terms evaluated at the optimal coupling, $\Delta$ decomposes exactly into feature, structural, mass (KL) and entropic components, and the structural component splits further into symmetric and antisymmetric parts (Proposition~\ref{prop:decomp}). This is an algebraic decomposition of signed quantities, not a causal attribution; we report the signed contributions and quote shares only for components that are non-negative in every pair. To attribute a change between $G_t$ and $G_s$ to the geometry block $(C,W)$ or to the node block $(\mu,F)$, we treat the blocks as players with value $v(\mathcal S)=\Delta_\varepsilon(G_t,G_t^{\mathcal S\leftarrow s})$, where $G_t^{\mathcal S\leftarrow s}$ replaces the blocks in $\mathcal S$ by those of year $s$. The Shapley values $\phi_{\mathrm{geo}}=\frac12\{v(\mathrm{geo})+v(\mathrm{both})-v(\mathrm{node})\}$ and $\phi_{\mathrm{node}}=\frac12\{v(\mathrm{node})+v(\mathrm{both})-v(\mathrm{geo})\}$ sum to $\Delta_\varepsilon(G_t,G_s)$, and the interaction $v(\mathrm{both})-v(\mathrm{geo})-v(\mathrm{node})$ is reported alongside. Unlike the component decomposition, which splits the objective at fixed couplings, the Shapley attribution recomputes the couplings for counterfactual states.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Gradient-based sensitivity of network trajectories}\label{sec:sensitivity}
+
+Proposition~\ref{prop:envelope} differentiates the value of one branch of stationary points. The quantities reported in practice are debiased portfolio estimates and, for trajectories, pass through soft alignment. The free inputs of a state $G$ are the observed relations $c_{ik}$ ($i\neq k$, $w_{ik}>0$), the attributes and the masses; masks are held fixed, because a change of observation status is a discrete change of the objective (Corollary~\ref{cor:mask}). For a pair $(G,H)$ we write $\partial_1V$ and $\partial_2V$ for the formulas of Proposition~\ref{prop:envelope} with respect to the inputs of the first and of the second argument, evaluated at the selected coupling.
+
+\begin{definition}[Regular selection]\label{def:regular}
+The selection is \emph{regular} at $(G,H)$ if, in a neighbourhood of the inputs, every candidate of the portfolio that attains $\widehat V_\varepsilon(G,H)$ follows the continuously differentiable branch of stationary points through a common point $P^\star$ at which $\nabla_P^2J_\varepsilon$ is non-singular.
+\end{definition}
+
+Under a regular selection $\widehat V_\varepsilon$ coincides locally with one branch value; where candidates on different branches tie it has a kink and only one-sided derivatives.
+
+\begin{proposition}[Gradient of the debiased discrepancy]\label{prop:graddelta}
+Let the selection be regular at $(G,H)$, $(G,G)$ and $(H,H)$, with selected couplings $P$ for $(G,H)$ and $S$ for $(G,G)$, $r=P\mathbf 1$ and $r_S=S\mathbf 1$.
+(a) For every free input $x$ of $G$,
+$\partial_x\widehat\Delta_\varepsilon(G,H)=\partial_{1,x}\widehat V_\varepsilon(G,H)-\tfrac12\{\partial_{1,x}\widehat V_\varepsilon(G,G)+\partial_{2,x}\widehat V_\varepsilon(G,G)\}$; inputs of $H$ are treated symmetrically.
+(b) With the portfolio of Section~\ref{sec:multistart}, $S=S^\top$, the two self-terms coincide, and
+\begin{align*}
+\nabla_C\widehat\Delta_\varepsilon&=2\alpha\,W\circ\{C\circ(PW'P^\top-SWS)-P(W'\circ D)P^\top+S(W\circ C)S\},\\
+\nabla_F\widehat\Delta_\varepsilon&=2(1-\alpha)\{\operatorname{diag}(r-r_S)F-PG+SF\},\qquad
+\nabla_\mu\widehat\Delta_\varepsilon=\gamma\,(r_S-r)/\mu .
+\end{align*}
+(c) If $H$ is a copy of $G$, $\nabla\widehat\Delta_\varepsilon(G,H)=0$, whereas the gradient $\partial_1\widehat V_\varepsilon(G,G)$ of the raw value is non-zero in general.
+\end{proposition}
+
+The mass sensitivity of the debiased discrepancy compares how much of a node's mass the cross-coupling and the self-coupling transport; the raw value adds the entropic bias $\gamma(\mathbf 1-r_S/\mu)$, which is present even when $H=G$.
+
+\begin{proposition}[Gradients of trajectory summaries]\label{prop:gradgsta}
+Let $x$ be a free input of the state $G_t$ of $\mathcal G$, let all selections involving $G_t$ be regular, and write $\nabla_x\Delta_{tu}=\partial_x\widehat\Delta_\varepsilon(G_t,G_u)$ and $\nabla_x\Delta^{\mathcal{GH}}_{ts}=\partial_x\widehat\Delta_\varepsilon(G_t,H_s)$.
+(a) $\partial_xa(t)=(T-1)^{-1}\sum_{u\neq t}\nabla_x\Delta_{tu}$ and, for $u\ne t$, $\partial_xa(u)=(T-1)^{-1}\nabla_x\Delta_{tu}$.
+(b) For fixed $\beta$, with $E^{\mathcal{GH}}=\nabla\mathcal A_\beta(\Delta^{\mathcal{GH}})$ and $E^{\mathcal{GG}}=\nabla\mathcal A_\beta(\Delta^{\mathcal{GG}})$,
+\[
+\partial_x\widehat{\mathrm{GSTA}}(\mathcal G,\mathcal H)=\sum_{s=1}^{S}E^{\mathcal{GH}}_{ts}\nabla_x\Delta^{\mathcal{GH}}_{ts}-\sum_{u\neq t}E^{\mathcal{GG}}_{tu}\nabla_x\Delta_{tu}.
+\]
+(c) If $\mathcal H$ is a copy of $\mathcal G$, the gradient in (b) vanishes.
+\end{proposition}
+
+The weights are expected alignment frequencies (Proposition~\ref{prop:sdtw}(c)): a relation that strongly affects $\Delta(G_t,H_s)$ for rarely aligned periods has little influence on the trajectory comparison, and the self-alignment term removes the part of its influence shared with the other periods of its own trajectory. With $\beta$ set from the data as in Section~\ref{sec:temporal}, (b) acquires the term $(\partial\widehat{\mathrm{GSTA}}/\partial\beta)\,\partial_x\beta$, where $\partial\mathcal A_\beta(\Delta)/\partial\beta=\{\mathcal A_\beta(\Delta)-\langle E,\Delta\rangle\}/\beta=-H(p_\beta)$ is minus the entropy of the Gibbs distribution over paths; we hold $\beta$ at its observed value.
+
+\begin{proposition}[Gradient of the lead--lag index]\label{prop:gradll}
+Let $Z=\sum_{ts}E_{ts}=\mathbb E_\beta|A|$ and let $Y(A)=\sum_{(t,s)\in A}(s-t-\tau)$ be the excess offset of a path.
+(a) For fixed $\beta$, $\nabla_\Delta\tau=-(\beta Z)^{-1}\operatorname{Cov}_\beta(Y,A)$, and $|\partial\tau/\partial\Delta_{ts}|\le\operatorname{sd}_\beta(Y)/(2\beta Z)$.
+(b) Let $\hat\tau$ be computed from $\tilde\Delta=\Delta-\min\Delta$ with $\beta=b\operatorname{med}(\tilde\Delta)$. Where the minimizing cell $k^\star$ and the cells defining the median are unique, $\hat\tau$ is differentiable,
+$\nabla\hat\tau=g-\langle g,\mathbf 1\mathbf 1^\top\rangle e_{k^\star}-\{\langle g,\tilde\Delta\rangle/\operatorname{med}(\tilde\Delta)\}(\bar e_{\mathrm{med}}-e_{k^\star})$,
+with $g$ the gradient in (a) at $\tilde\Delta$ and $\bar e_{\mathrm{med}}$ the (averaged) indicator of the median cell(s); moreover $\langle\nabla\hat\tau,\mathbf 1\mathbf 1^\top\rangle=\langle\nabla\hat\tau,\Delta\rangle=0$ and $\nabla\hat\tau(\Delta^\top)=-\nabla\hat\tau(\Delta)^\top$.
+(c) Under regular selections, for a free input $x$ of $G_t$, $\partial_x\hat\tau(\mathcal G,\mathcal H)=\sum_s(\nabla\hat\tau)_{ts}\nabla_x\Delta^{\mathcal{GH}}_{ts}$.
+\end{proposition}
+
+Raising $\Delta_{ts}$ lowers $\tau$ exactly when paths through $(t,s)$ have above-average excess offset. As $\beta\to0$ with a unique optimal path the covariance vanishes and $\tau$ becomes locally constant: timing sensitivity is a finite-temperature property of the soft alignment. Since $\nabla^2\mathcal A_\beta=-\beta^{-1}\operatorname{Cov}_\beta(A)$, Hessian--vector products cost $O(TS)$ by forward differentiation of the soft-DTW recursions.
+
+\begin{proposition}[Accuracy of first-order predictions]\label{prop:local}
+(a) Let $P$ be any coupling and $\delta=(\delta C,\delta F,\delta\mu)$ a perturbation of the free inputs of $G$ with $\mu+\delta\mu>0$. The global optimum and the value $V^{\mathrm{bf}}$ returned by Algorithm~\ref{alg:gcg} started at $P$ for the perturbed pair satisfy
+$V_\varepsilon(G+\delta,H)\le V^{\mathrm{bf}}\le J_\varepsilon(P)+\langle\partial_\theta J_\varepsilon(P),\delta\rangle+R_P(\delta)$, where
+\[
+R_P(\delta)=\alpha\sum_{ik}w_{ik}(PW'P^\top)_{ik}\delta c_{ik}^2+(1-\alpha)\sum_ir_i\|\delta f_i\|^2+\gamma\sum_ir_i\Bigl\{\tfrac{\delta\mu_i}{\mu_i}-\log\Bigl(1+\tfrac{\delta\mu_i}{\mu_i}\Bigr)\Bigr\}\ge0;
+\]
+at the selected coupling $J_\varepsilon(P)=\widehat V_\varepsilon(G,H)$ and $\partial_\theta J_\varepsilon(P)$ is the envelope gradient.
+(b) Let $\mathcal S$ be $\widehat\Delta_\varepsilon$, $a(t)$, $\widehat{\mathrm{GSTA}}$ or $\hat\tau$, and $\theta_\lambda=\theta_0+\lambda\delta$. If for $\lambda\in[0,1]$ all selections are regular and remain on the branches through $\theta_0$, and the cells of Proposition~\ref{prop:gradll}(b) do not change, then $\mathcal S$ is twice continuously differentiable on the segment and
+$|\mathcal S(\theta_1)-\mathcal S(\theta_0)-\nabla\mathcal S(\theta_0)^\top\delta|\le\tfrac12\max_\lambda|\delta^\top\nabla^2\mathcal S(\theta_\lambda)\delta|$.
+(c) For weights $q_k>0$ and bounds $\bar u_k$, the problem $\max_u\pm\langle\nabla\mathcal S,u\rangle$ subject to $\sum_kq_k|u_k|\le B$ and $|u_k|\le\bar u_k$ is solved by ranking coordinates by $|\partial_k\mathcal S|/q_k$ and setting $u_k=\pm\operatorname{sign}(\partial_k\mathcal S)\bar u_k$ in that order until the budget is exhausted, the last coordinate fractionally.
+\end{proposition}
+
+Part (a) holds for every perturbation, not only small ones: re-optimizing the coupling can only lower a cross-term below its frozen-coupling prediction. In $\widehat\Delta_\varepsilon$ the self-term enters with the opposite sign, so first-order predictions of debiased quantities are not one-sided, in line with Proposition~\ref{prop:optimization-error}. Because (b) fails where the selection changes branch, every perturbation is evaluated by re-solving all affected problems with the portfolio and, separately, by following the original branch.
+
+\emph{Influence measures.} For a summary $\mathcal S$ and a perturbation scale $\sigma_{ik}$, the standardized sensitivities $\tilde g_{ik}=\sigma_{ik}\partial\mathcal S/\partial c_{ik}$ define outgoing, incoming and total influence $S_i^{\mathrm{out}}=\sum_{k\neq i}|\tilde g_{ik}|$, $S_i^{\mathrm{in}}=\sum_{k\neq i}|\tilde g_{ki}|$, $S_i=S_i^{\mathrm{out}}+S_i^{\mathrm{in}}$, and the directional imbalance $B_i=(S_i^{\mathrm{out}}-S_i^{\mathrm{in}})/(S_i+\eta)$. For a pair observed in both directions, the derivatives along $\delta(E_{ik}+E_{ki})$ and $\delta(E_{ik}-E_{ki})$ are $D_S=g_{ik}+g_{ki}$ and $D_A=g_{ik}-g_{ki}$; the antisymmetric share $\sum D_A^2/\sum(D_S^2+D_A^2)$ is the sensitivity counterpart of Proposition~\ref{prop:decomp}. The split measures mismatch at a fixed coupling; the gradient measures how the optimized discrepancy responds. If the inputs carry independent errors with standard deviations $\sigma_{ik}$, the delta method gives $\operatorname{Var}\mathcal S\approx\sum_{ik}\tilde g_{ik}^2$, a local approximation whose accuracy we check by simulation in Section~\ref{sec:influence}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Numerical studies}
+\label{sec:sim}
+
+All computations use double precision, $\gamma=1$, $\varepsilon=0.05$ and $\alpha=0.5$ unless stated otherwise, on one core of an Intel Xeon 2.1~GHz processor (Python 3.12, NumPy 2.4 with single-threaded OpenBLAS, numba 0.68). Designs are summarized here and detailed in Supplement~S4.
+
+\subsection{Verification, convergence audit and benchmarks}\label{sec:verif}
+
+Table~\ref{tab:verif} and Figure~\ref{fig:verif} summarize the checks; Supplement~S3 gives the details. The factorized gradient $T+T^\ast$ agrees with the gradient obtained from the explicit fourth-order tensor $L_{ijkl}$, with and without masks and for unequal node sets, whereas $2T$ is off by 39\%--68\%. Envelope gradients agree with central differences in which the problem is re-solved at each perturbed input. Over 20 random directed instances, Algorithm~\ref{alg:gcg} terminated with Frank--Wolfe gaps below $10^{-13}$, whereas the linearization with $2T(P)$ and a half-gradient fixed-point update stall at non-stationary points with gaps of order $10^{-3}$--$10^{-2}$ and objective values that are higher by up to $0.065$.
+
+We audited 180 runs of Algorithm~\ref{alg:gcg} on directed, masked and different-size instances, from product and random initializations and with line-search grids of 33 and 513 points, recording every iteration. All runs converged, the objective decreased monotonically and the sufficient-decrease condition of Proposition~\ref{prop:gcg}(b) held at every step. The negative-curvature branch was used in a median 93\%--96\% of the steps, and the refined step was accepted in a median 93\%--100\% of them; residuals $\|\nabla J_\varepsilon\|_\infty$ evaluated independently at termination were of order $10^{-6}$ for gaps below $10^{-12}$. Changing the grid from 33 to 513 points changed the stationary point reached in 24 of 90 paired runs, all of them from random initializations, and in no systematic direction; from the portfolio initializations the result never changed. On twelve difficult comparisons between networks with different node sets, twenty additional random initializations improved the portfolio estimate in three cases, by 0.3\%, 2.5\% and 5.9\%; perturbing the inputs by $10^{-6}$ never changed the selected candidate and changed the gradients by at most $1.4\times10^{-5}$ in relative terms. When node identities persist, all initializations reached the same value to within $1.4\times10^{-9}$ in every empirical comparison.
+
+The scaling oracle accounts for roughly three quarters of the run time, the structural operators for about a tenth and the line search for the rest; a masked solve with $N=400$ takes 2.5 seconds from one initialization and 9 seconds for the three-start portfolio (Supplement Table~S5). For comparison with existing software we solved balanced, fully observed directed problems with POT's conditional gradient for fused GW (exact OT oracle, \texttt{symmetric=False}) and POT's entropic fused GW, and with Algorithm~\ref{alg:gcg} at $\gamma=10^3$ (Supplement Table~S6). The fused GW energies of the three solutions agree to within 1.6\%, but POT's conditional gradient is orders of magnitude faster (7~ms against 54~s at $N=100$), because unbalanced scaling converges at the rate $\gamma/(\gamma+\varepsilon)$, which approaches one in the near-balanced regime. Algorithm~\ref{alg:gcg} is designed for the unbalanced, masked problems that POT's balanced solvers do not address; for balanced problems without masks, POT is the better tool.
+
+\begin{table}[hp]
+\caption{Verification of the computational components and of the implemented algorithm (details in Supplement~S3).}\label{tab:verif}
+\centering\scriptsize
+\begin{tabular}{lr}
+\toprule
+Check & Result\\
+\midrule
+$\nabla Q=T+T^\ast$ vs.\ explicit tensor $L_{ijkl}$ (max.\ rel.\ error; masks, $n\ne m$) & $4.8\times10^{-16}$\\
+\quad the symmetric-case expression $2T$ vs.\ explicit tensor (max.\ rel.\ error) & 0.68\\
+Envelope gradients vs.\ re-solved central differences (max.\ rel.\ error, 18 blocks) & $1.5\times10^{-7}$\\
+\quad weighting $C$ by $rc^\top$ instead of $rr^\top$ (rel.\ error) & 0.60\\
+Frank--Wolfe gap at termination, Algorithm~1 (median; max) & $4.7\times10^{-14}$; $8.7\times10^{-14}$\\
+Frank--Wolfe gap at termination, symmetric-case linearization (median; max) & $6.3\times10^{-3}$; $2.4\times10^{-2}$\\
+Frank--Wolfe gap at termination, half-gradient fixed point (median; max) & $1.3\times10^{-2}$; $2.8\times10^{-2}$\\
+Audit of Algorithm~1, 180 runs: monotone / sufficient decrease at every step & 100\% / 100\%\\
+\quad steps with negative curvature $a<0$; refined step accepted (median share) & 0.95; 0.97\\
+\quad residual $\|\nabla J_\varepsilon\|_\infty$ at termination (median; max) & $1.5\times10^{-6}$; $3.1\times10^{-6}$\\
+Lead--lag: enumeration of all paths vs.\ soft-DTW gradient (max.\ abs.\ difference) & $4.0\times10^{-15}$\\
+\quad idealized shift, $2\ell<T$, $\beta/\kappa\le0.1$: $|\tau-\ell(T-1)/(T+\ell)|$ (max.) & $5.4\times10^{-5}$\\
+\quad idealized shift, $2\ell>T$, $\beta/\kappa\le0.1$: $|\tau|$ (max.) & $1.1\times10^{-4}$\\
+Cross-network pairs improved by 20 extra random starts (of 12); max.\ rel.\ improvement & 3; 0.059\\
+$|V(G,H)-V(H,G)|$ (max.); G-STA between a trajectory and a copy & $1.7\times10^{-16}$; $6.9\times10^{-18}$\\
+$\alpha=0$ vs.\ POT \texttt{sinkhorn\_unbalanced}; soft-DTW vs.\ enumeration (max.\ errors) & $5.7\times10^{-12}$; $4.0\times10^{-15}$\\
+Debiased gradient (Prop.~\ref{prop:graddelta}) vs.\ re-solved central differences (max.\ rel.\ error, 24 blocks) & $7.5\times10^{-6}$\\
+\quad omitting the second self-argument; raw value instead of debiased (rel.\ error) & 0.06--0.25; 0.12--0.49\\
+\quad derivative with respect to an unobserved relation & 0\\
+Anomaly, G-STA and lead--lag gradients (Props.~\ref{prop:gradgsta}--\ref{prop:gradll}) vs.\ re-solved differences (max.\ rel.\ error) & $8.6\times10^{-6}$\\
+Soft-DTW Hessian--vector products vs.\ enumeration; $\nabla\hat\tau$ vs.\ central differences & $8.3\times10^{-15}$; $1.7\times10^{-11}$\\
+Data: gradients of $\Delta$, $a(2020)$, G-STA and $\hat\tau$ vs.\ re-solved differences (max.\ rel.\ error, costs) & $9.2\times10^{-6}$\\
+Frozen-coupling bound (Prop.~\ref{prop:local}(a)), 72 perturbations: largest excess & $-7.8\times10^{-10}$\\
+Re-solved perturbed problems that changed branch (of 1{,}680) & 0\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig1_verification.pdf}
+\caption{(a) Frank--Wolfe gap and objective excess along the iterations of Algorithm~\ref{alg:gcg} for one directed instance. (b) Gap at termination over 20 directed instances for Algorithm~\ref{alg:gcg} and two update rules that do not use the gradient of Lemma~\ref{lem:grad}. (c) Run time of the structural contraction (direct tensor versus factorization) and of a full masked solve.}\label{fig:verif}
+\end{figure}
+
+\subsection{Detecting a structural shock}\label{sec:det}
+
+We simulated trajectories of $N=12$ nodes over periods $t=1,\dots,8$ with a directed geometry $C=S+A$ (symmetric part from latent positions, antisymmetric part from node-level direction effects of strength $\kappa$), log-normal masses and persistent attributes, observed with noise of standard deviation $\sigma$. In period $t=5$ one of four shocks hits the four heaviest nodes: a \emph{reversal} of the antisymmetric part of their mutual corridors, which leaves the symmetric part unchanged; a multiplicative \emph{surge} of their corridor costs; a shift of their \emph{attributes}; or a contraction of their \emph{masses}. A method detects the shock if period 5 has the largest anomaly score. We compared seven methods: directed G-STA; G-STA from symmetrized geometries; the attribute-and-mass discrepancy with $\alpha=0$ (an STA-type comparison); a mass-weighted Frobenius comparison, which is the UFGW objective with the coupling restricted to the identity; an unweighted comparison of the stacked standardized inputs; and two permutation-invariant baselines, the Euclidean distance between standardized vectors of network summaries (mass-weighted mean and dispersion of costs, asymmetry index, mean attribute, total mass and mass entropy) and the distance between the singular values of the mass-weighted geometry.
+
+Figure~\ref{fig:det} shows detection rates with Wilson 95\% intervals over 60 replications per setting, and Table~\ref{tab:detvar} reports variants. The results show where each comparison is useful. Only direction-aware methods detect a reversal: directed G-STA detects a full reversal in every replication, whereas the symmetrized analysis and the $\alpha=0$ discrepancy stay near the chance level of $1/8$ for every effect size, as Proposition~\ref{prop:decomp} predicts, and the summary and spectral baselines detect it in at most 65\% of replications. For a symmetric corridor surge the symmetrized analysis is somewhat more powerful (0.97 against 0.85 at $\delta=0.1$), because averaging $C$ and $C^\top$ removes part of the noise. The $\alpha=0$ discrepancy is the most powerful method for attribute shocks, and the network summaries for mass shocks (0.98 at $\delta=0.25$, against 0.10 for directed G-STA): a pure change of mass is diluted in a structural comparison that weights noisy relations by mass. When identities persist, directed G-STA and the mass-weighted Frobenius comparison have the same power, and both are more powerful than the unweighted comparison whenever the shock affects heavy nodes. The conclusions are stable for $N=24$, larger noise, stronger directional effects and less heterogeneous masses (Table~\ref{tab:detvar}). The decisive difference appears when node identities do not persist, as when labels are reassigned or the correspondence between units is unknown: after an independent random relabeling of the nodes in every period, directed G-STA still detects the reversal in all replications and the corridor surge in 77\% of them, whereas the Frobenius comparisons fall to 17\%--23\%, close to chance, and the spectral baseline reaches 67\% and 47\%.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig2_detection.pdf}
+\caption{Detection rates of a one-period shock to the four heaviest of 12 nodes ($T=8$, shock in period 5, 60 replications per point; bars are Wilson 95\% intervals; the dotted line is the chance level $1/8$). Effect sizes are scenario-specific (Supplement~S4).}\label{fig:det}
+\end{figure}
+
+\begin{table}[hp]
+\caption{Detection rates under variations of the base design (40 replications; 30 for non-persistent identities, where node labels are redrawn every period). Columns: directed G-STA, symmetrized G-STA, $\alpha=0$, mass-weighted and unweighted Frobenius, network summaries, geometry spectrum.}\label{tab:detvar}
+\centering\scriptsize
+\begin{tabular}{lllccccccc}
+\toprule
+Variant & Scenario & $\delta$ & directed & symm. & $\alpha{=}0$ & w.\,Frob. & Frob. & summ. & spectr.\\
+\midrule
+base ($N{=}12$, $\sigma{=}0.25$, $\kappa{=}0.5$) & no shock & 0 & 0.20 & 0.12 & 0.08 & 0.20 & 0.22 & 0.13 & 0.22\\
+ & reversal & 0.5 & 0.92 & 0.08 & 0.10 & 0.92 & 0.78 & 0.37 & 0.25\\
+ & corridor surge & 0.05 & 0.32 & 0.38 & 0.08 & 0.30 & 0.17 & 0.27 & 0.30\\
+\addlinespace
+$N=24$ & no shock & 0 & 0.15 & 0.20 & 0.15 & 0.12 & 0.12 & 0.12 & 0.12\\
+ & reversal & 0.5 & 0.97 & 0.17 & 0.10 & 0.97 & 0.62 & 0.23 & 0.17\\
+ & corridor surge & 0.05 & 0.23 & 0.40 & 0.12 & 0.23 & 0.10 & 0.23 & 0.17\\
+\addlinespace
+$\sigma=0.4$ & no shock & 0 & 0.10 & 0.23 & 0.10 & 0.10 & 0.17 & 0.12 & 0.10\\
+ & reversal & 0.5 & 0.70 & 0.12 & 0.10 & 0.70 & 0.57 & 0.17 & 0.17\\
+ & corridor surge & 0.05 & 0.15 & 0.20 & 0.20 & 0.12 & 0.05 & 0.20 & 0.17\\
+\addlinespace
+$\kappa=1$ & no shock & 0 & 0.12 & 0.10 & 0.17 & 0.12 & 0.10 & 0.03 & 0.07\\
+ & reversal & 0.5 & 0.97 & 0.12 & 0.07 & 0.97 & 0.97 & 0.75 & 0.78\\
+ & corridor surge & 0.05 & 0.42 & 0.57 & 0.07 & 0.42 & 0.30 & 0.20 & 0.28\\
+\addlinespace
+less mass heterogeneity & no shock & 0 & 0.12 & 0.17 & 0.05 & 0.12 & 0.17 & 0.07 & 0.15\\
+ & reversal & 0.5 & 0.88 & 0.05 & 0.07 & 0.88 & 0.82 & 0.62 & 0.28\\
+ & corridor surge & 0.05 & 0.23 & 0.30 & 0.12 & 0.23 & 0.28 & 0.33 & 0.25\\
+\addlinespace
+non-persistent identities & no shock & 0 & 0.07 & -- & 0.13 & 0.10 & 0.07 & 0.17 & 0.13\\
+ & reversal & 1 & 1.00 & -- & 0.20 & 0.17 & 0.23 & 0.07 & 0.67\\
+ & corridor surge & 0.1 & 0.77 & -- & 0.10 & 0.17 & 0.17 & 0.53 & 0.47\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\subsection{Lead--lag estimation}\label{sec:simll}
+
+Two noisy realizations of a network with 10 nodes experience a common transient shock following a Gaussian pulse, the second with a delay of $\ell\in\{0,\dots,4\}$ periods, for $T\in\{6,10,16\}$. In the \emph{level} scenario costs rise multiplicatively while throughput and connectivity fall; in the \emph{spread} scenario costs undergo a mean-preserving spread around their mass-weighted mean, so that the mass-weighted average cost does not move. Figure~\ref{fig:ll} and Supplement Table~S8 summarize 24 replications per cell. Where the shift is identifiable ($2\ell<T$), the boundary-corrected lead~\eqref{eq:corrected} is close to the truth: its mean is within 0.13 of $\ell$ for level shocks and within 0.20 for spread shocks, with root mean squared errors of at most 0.35, and the sign of $\hat\tau$ is correct in every replication with $\ell\ge1$. The index is insensitive to $\beta$: for $T=10$, varying $\beta$ from 0.03 to 1 times the median of the level-adjusted matrix changes the mean of $\hat\tau$ by at most 0.08 (Supplement Figure~S1). At the edge of identifiability the behaviour changes abruptly. With $T=6$, a lead of three periods ($2\ell=T$) was still recovered, but a lead of four was estimated with the wrong sign in every replication. Six periods therefore support statements about leads of up to two periods, and leads approaching half the window should not be interpreted. Comparisons between different networks add the optimization uncertainty documented in Section~\ref{sec:verif} and require the level adjustment of Proposition~\ref{prop:leadlag}(b), whose effect is visible in the application below.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig3_leadlag.pdf}
+\caption{Lead--lag estimates for two realizations of a 10-node network with the second delayed by $\ell$ periods (24 replications; bars are $\pm1.96$ Monte Carlo standard errors). Shaded: $2\ell\ge T$, outside the range of Proposition~\ref{prop:leadlag}(d). The dash-dotted line is the zero-temperature value for the idealized shift.}\label{fig:ll}
+\end{figure}
+
+\subsection{Missing edges}\label{sec:mis}
+
+We generated drifting trajectories with $N=20$ and $T=6$ and deleted relations completely at random at rates from 5\% to 45\%, asymmetrically (one direction of each pair seven times more often), depending on the unobserved cost, depending on the node (peripheral origins report less), or in a structured way that mimics the application. Table~\ref{tab:mis} compares discrepancy matrices computed with masks, with two-way fixed-effects imputation of the log costs and with imputation by the row maximum, against the full-data matrix (30 replications per design). Masks preserve the ordering of the discrepancies best in all designs (Spearman correlations 0.93--0.99) and give the smallest error in seven of the eight; fixed-effects imputation is slightly more accurate under the structured design, whose costs have an additive origin--destination component that the imputation model matches. All errors grow with the missing rate. Masks prevent the comparison of unobserved relations but do not by themselves remove bias under informative missingness, and the level of the discrepancies changes with the observed fraction. Row-maximum imputation, a common default, distorts the discrepancies severely in every design.
+
+\begin{table}[hp]
+\caption{Missing edges: relative error of the discrepancy matrix (mean and standard deviation over 30 replications) and Spearman correlation of its entries with the full-data matrix.}\label{tab:mis}
+\centering\scriptsize
+\begin{tabular}{lrcccccc}
+\toprule
+ & & \multicolumn{3}{c}{rel.\ error of $\Delta$} & \multicolumn{3}{c}{Spearman (entries)}\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+Missingness & missing & mask & FE imp. & row-max & mask & FE imp. & row-max\\
+\midrule
+MCAR 5\% & 0.05 & 0.08 (0.03) & 0.16 (0.06) & 1.14 (0.32) & 0.99 & 0.93 & 0.67\\
+MCAR 15\% & 0.15 & 0.23 (0.03) & 0.35 (0.11) & 2.19 (0.50) & 0.97 & 0.85 & 0.52\\
+MCAR 30\% & 0.30 & 0.43 (0.05) & 0.63 (0.19) & 2.97 (0.68) & 0.94 & 0.68 & 0.37\\
+MCAR 45\% & 0.45 & 0.61 (0.04) & 0.76 (0.17) & 3.18 (0.56) & 0.93 & 0.57 & 0.30\\
+asymmetric & 0.20 & 0.28 (0.02) & 0.41 (0.16) & 2.22 (0.65) & 0.97 & 0.82 & 0.49\\
+cost-dependent & 0.14 & 0.21 (0.05) & 0.40 (0.20) & 0.77 (0.35) & 0.98 & 0.82 & 0.80\\
+node-dependent & 0.16 & 0.12 (0.03) & 0.19 (0.07) & 1.21 (0.38) & 0.99 & 0.93 & 0.63\\
+structured & 0.27 & 0.26 (0.05) & 0.24 (0.10) & 1.12 (0.27) & 0.98 & 0.87 & 0.77\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Verification of the sensitivity formulas}\label{sec:verifsens}
+
+We compared Propositions~\ref{prop:graddelta}--\ref{prop:gradll} with central differences (step $10^{-5}$) in which every affected state-level problem is re-solved with the full portfolio to a gap of $10^{-13}$. We used four instance types: a directed instance; a directed instance with 25\% missing relations; networks with 8 and 6 nodes and 20\% missing relations; and a near copy. For both arguments and every block, the gradient of Proposition~\ref{prop:graddelta} agrees to a relative error of at most $7.5\times10^{-6}$. In the near copy the feature gradients are of order $10^{-6}$ and agree to $7\times10^{-11}$ in absolute terms (Table~\ref{tab:verif}; Supplement Table~S12). Two shortcuts fail. Omitting the second argument of the self-comparison gives relative errors of 6\%--25\%, and differentiating the raw value instead of the debiased discrepancy gives 12\%--49\%. Near a copy, where the debiased gradient almost vanishes (Proposition~\ref{prop:graddelta}(c)), the raw gradient is 237 times too large. Derivatives with respect to unobserved relations are exactly zero.
+
+For trajectories of five states with 8 and 6 nodes and 15\% missing relations, the gradients of the anomaly score (with respect to the state's own inputs and to those of another state), of the doubly debiased G-STA discrepancy and of the level-adjusted lead--lag index agree with re-solved differences to a relative error of at most $8.6\times10^{-6}$ (Supplement Table~S13). Soft-DTW Hessian--vector products agree with exhaustive enumeration of all 1{,}683 paths for $T=S=6$ to $8\times10^{-15}$. The smallest eigenvalue of the scaled Hessian $\operatorname{diag}(P)^{1/2}\nabla^2_PJ_\varepsilon\operatorname{diag}(P)^{1/2}$ was at least 0.027 in every instance, so the selected couplings are non-degenerate local minimizers.
+
+Where the selection is not regular, the formulas give one-sided derivatives only. Supplement Figure~S6 follows a path along which two stationary branches, matching two interchangeable nodes in opposite ways, exchange the lead. The portfolio estimate is their lower envelope. Away from the crossing, each branch slope given by Proposition~\ref{prop:graddelta} matches the local slope of the estimate; at the crossing the estimate has a kink, the one-sided slopes differ by 2.05 ($+1.03$ against $-1.03$), and a central difference across it estimates neither. Re-solving with branch following, as we do for every perturbation in Section~\ref{sec:influence}, detects such crossings. Verification on the data is reported in Section~\ref{sec:influence}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{An exploratory application: the international transport-cost network, 2016--2021}
+\label{sec:app}
+
+\subsection{Data and construction of the trajectory}
+
+We combine three UNCTADstat panels: bilateral transport costs per kilogram (all modes and products), the liner shipping connectivity index (LSCI), and container port throughput in TEU. Economy names differ across the files for a few economies (for instance, ``Korea, Republic of'' and ``Republic of Korea'') and were harmonized; without this step the Republic of Korea, a top-five container economy, drops out silently. The transport-cost file contains no records for the United States, the United Kingdom or France, so these economies are absent from the panel. Of the 94 economies present in all three files, we keep the 86 with throughput observed in every year. Treating missing throughput as zero would create spurious collapses of node mass; imputing it would require modelling three consecutive missing years for some economies. The excluded economies (Algeria, the Democratic Republic of the Congo, French Polynesia, Guinea, Iran, Libya, Montenegro and Mozambique) are small in the throughput distribution, but the conclusions apply to the retained panel only. Each state $G_t$ has masses $\mu_{t,i}\propto\sqrt{\mathrm{TEU}_{t,i}}$, scaled so that the average total mass over the six years is one; raw throughput would give China 38\% of the mass and only six effective nodes, whereas the square root gives about 41. Attributes are standardized log LSCI values. The geometry is $c_{t,ij}=\log(1+\text{cost}_{t,ij})$, winsorized at the pooled 0.5\% and 99.5\% quantiles (0.007 and 21.7 USD/kg) and divided by its pooled standard deviation. About 11\% of the directed pairs are unobserved in each year, and Mexico and Venezuela never appear as destinations, so their incoming costs are never compared. Missing pairs enter through the masks, not through imputation.
+
+Three features of the raw data frame the analysis. Directional asymmetry is large: among pairs observed in both directions, the mean of $|\log(r_{ij}/r_{ji})|$ is between 1.31 and 1.43 across years, so the larger of the two directional costs exceeds the smaller by a factor of about 3.9 in geometric mean, and the log costs in the two directions are only weakly correlated (0.16--0.19). Pair-level costs are noisy from year to year (the standard deviation of annual log changes is about 0.86). And the cost level moved mainly at the ends of the window: on the 6{,}165 pairs observed in all years, the median cost per kilogram was 0.195 USD in 2016, between 0.151 and 0.161 USD in 2017--2020, and 0.192 USD in 2021.
+
+\subsection{The structural trajectory}
+
+Figure~\ref{fig:traj}(a) displays the debiased discrepancies between years. All 30 off-diagonal entries are positive, and the local Gibbs kernels $k_\beta$ and $k_\beta/(1+k_\beta)$ are positive definite on the six states for every bandwidth examined, so the sufficient condition of Proposition~\ref{prop:gsta}(b) holds for comparisons among these states. Discrepancies grow with temporal distance, the signature of gradual drift. The matrix $-\frac12J\Delta J$ has no negative eigenvalues, but its spectrum is flat for $\alpha\ge0.5$ (for $\alpha=0.5$: 0.086, 0.065, 0.048, 0.041, 0.034): the two-dimensional maps of Figure~\ref{fig:traj}(b) display only 52\%--55\% of the positive spectrum, with stress 0.37--0.40, and should be read as a coarse visualization in which the first coordinate orders the years in time while the remaining variation is year-specific (Supplement Table~S10). The anomaly score is largest for 2016 and 2021; after adjusting for the lag profile, 2016 remains the most distinctive year. The largest year-on-year changes occur between 2016 and 2017 and between 2020 and 2021, the years in which the cost level moved most. The year 2020 is not distinctive: it ranks fourth on the anomaly score at $\alpha=0.5$ and last at $\alpha=0$.
+
+We separate three sources of uncertainty. \emph{Numerical} uncertainty is small: for these same-node comparisons all initializations agree to within $1.4\times10^{-9}$. \emph{Sensitivity to the composition of the network} was assessed by node subsampling: in 30 subsamples containing 80\% of the economies, 2016 ranked first and 2021 second every time, and 2020 ranked between third and sixth (Figure~\ref{fig:traj}c). \emph{Sensitivity to specification} is summarized in Table~\ref{tab:rob}: 2016 ranks first in twelve of the thirteen variants, 2020 never ranks above third, and the rank correlation of the discrepancies with the main specification is at least 0.94. Restricting the masks to the pairs observed in every year, which removes any contribution of changing observation patterns, leaves the ordering unchanged (correlation 0.996). None of these analyses quantifies sampling error in the measured costs, which would require a model for the data-generating process of the cost estimates; the application is therefore exploratory. Its conclusion about 2020 is conditional on the annual, all-mode cost data, the preprocessing and the discrepancy: the COVID-19 disruption of container shipping \citep{notteboom2021disruptions} does not appear as a 2020 break in these data, and its imprint is part of the 2020--2021 increase.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig4_trajectory.pdf}
+\caption{(a) Debiased discrepancies $\Delta_{ts}$ between years ($\alpha=0.5$). (b) Two-dimensional classical scaling maps for $\alpha\in\{0,0.5,1\}$, rescaled to a common size (they display 88\%, 55\% and 52\% of the positive spectrum). (c) Anomaly and trend-adjusted scores relative to their mean, with 90\% ranges over 30 node subsamples.}\label{fig:traj}
+\end{figure}
+
+\begin{table}[hp]
+\caption{Rank of each year by anomaly score under alternative specifications, and Spearman correlation $\rho$ of the off-diagonal discrepancies with the main specification. $^\dagger$The 91 economies and preprocessing of an earlier version of this analysis (missing throughput set to zero, row-maximum imputation), with the corrected solver and $\alpha=0.7$.}\label{tab:rob}
+\centering\scriptsize
+\begin{tabular}{lccccccr}
+\toprule
+Specification & 2016 & 2017 & 2018 & 2019 & 2020 & 2021 & $\rho$\\
+\midrule
+main specification & 1 & 5 & 6 & 3 & 4 & 2 & 1.000\\
+two-way FE imputation & 1 & 5 & 6 & 3 & 4 & 2 & 0.986\\
+row-maximum imputation & 1 & 5 & 6 & 4 & 3 & 2 & 0.936\\
+raw TEU mass & 1 & 3 & 6 & 4 & 5 & 2 & 0.986\\
+log TEU mass & 1 & 4 & 6 & 3 & 5 & 2 & 0.986\\
+raw LSCI feature & 2 & 3 & 6 & 4 & 5 & 1 & 0.954\\
+no winsorization & 1 & 4 & 6 & 3 & 5 & 2 & 0.996\\
+symmetrized geometry & 1 & 3 & 6 & 4 & 5 & 2 & 0.989\\
+common support (pairs observed in all years) & 1 & 4 & 6 & 3 & 5 & 2 & 0.996\\
+eps = 0.02 & 1 & 5 & 6 & 3 & 4 & 2 & 0.971\\
+eps = 0.1 & 1 & 3 & 6 & 5 & 4 & 2 & 0.961\\
+gamma = 0.5 & 1 & 5 & 6 & 3 & 4 & 2 & 0.996\\
+gamma = 2 & 1 & 5 & 6 & 3 & 4 & 2 & 0.993\\
+earlier preprocessing$^\dagger$ & 1 & 3 & 5 & 2 & 4 & 6 & --\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\subsection{What carries the change?}
+
+The decompositions of Section~\ref{sec:summaries} answer this question exactly (Figure~\ref{fig:attr}). The structural term is the largest component of every discrepancy; the attribute term is positive and smaller, and the mass and entropic terms are small and of either sign, so only the structural and attribute shares are meaningful. The Shapley attribution assigns 86\%--98\% of each year-pair discrepancy to the geometry block, with interactions of at most 0.004 in absolute value; the largest node contribution concerns the comparison of 2016 with 2021 (14\%), reflecting the slow decline of connectivity and the growth of throughput. Within the structural term, evaluated on the pairs observed in both directions, the antisymmetric part of the geometry contributes between 43\% and 49\%. A symmetrized analysis would thus ignore almost half of the measured structural change. Because both parts are non-negative by Proposition~\ref{prop:decomp}, these shares are well defined.
+
+The envelope gradients localize the change further. For the 2020--2021 transition, the corridors with the largest first-order contributions $\partial\Delta/\partial c_{ij}\times(c_{2021,ij}-c_{2020,ij})$ involve the heaviest nodes, because the structural term weights each relation by the product of its endpoint masses (Supplement Table~S11). Analytic gradients agree with re-solved finite differences to a relative accuracy of about $10^{-4}$ in the full problem and cost two matrix products once the coupling is available, whereas finite differences would need two solves for each of the 7{,}310 corridors. The first-order contributions are a ranking, not an exact decomposition: their sum exceeds $\Delta$ because the changes are not infinitesimal.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig5_attribution.pdf}
+\caption{(a) Shapley attribution of each year-pair discrepancy to the geometry and to the node attributes and masses. (b) Exact signed decomposition into structural, attribute, mass and entropic components ($\alpha=0.5$). (c) Share of the structural discrepancy due to the antisymmetric part of the geometry.}\label{fig:attr}
+\end{figure}
+
+\subsection{Regional timing}
+
+We partitioned the 86 economies into six regions and compared the regional trajectories pairwise (Table~\ref{tab:reg} and Supplement Figure~S4). These comparisons involve different node sets and use the full initialization portfolio. Adding ten random initializations in each of the 540 cells did not change any value. The Gibbs-kernel condition of Proposition~\ref{prop:gsta}(b) holds for all fifteen pairs, so the reported G-STA values are non-negative by construction. Without level adjustment the lead--lag index is $0.000$ for every pair, the collapse predicted by Proposition~\ref{prop:leadlag}(b); the level-adjusted indices are antisymmetric to machine precision. The regional alignment indices indicate systematic differences in the temporal ordering of similar network configurations. In particular, the corrected indices for comparisons involving Europe, East Asia, and South and South-East Asia correspond to shift-equivalent offsets of approximately 1.4 years under the idealized calibration of Proposition~\ref{prop:leadlag}(d).
+These values should not be interpreted as estimates of physical transmission delays. The correction is exact only in the limiting pure-shift model, and the six-year observation window provides limited information about the temporal location of structural changes.
+Three corrected indices involving Sub-Saharan Africa reach the range in which the pure-shift calibration is unreliable. We do not interpret their corrected magnitudes.
+The comparison with symmetrized geometries suggests that the regional timing indices are predominantly associated with the symmetric component of relational geometry.
+
+\begin{table}[hp]
+\caption{Regional lead--lag: level-adjusted index $\hat\tau(a,b)$ from directed and symmetrized geometries (positive: region $a$ precedes $b$), boundary-corrected lead $\hat\ell(a,b)$ in years ($^\dagger$: $|\hat\ell|\ge2.5$, at the edge of identifiability with $T=6$; not interpreted), doubly debiased G-STA, and smallest eigenvalue of the Gram matrix of $k_\beta/(1+k_\beta)$ on the twelve states. EAP: East Asia and Pacific; SSEA: South and South-East Asia; EUR: Europe; MENA: Middle East and North Africa; SSA: Sub-Saharan Africa; LAC: Latin America and Caribbean.}\label{tab:reg}
+\centering\scriptsize
+\begin{tabular}{llrrrrr}
+\toprule
+$a$ & $b$ & $\hat\tau(a,b)$ & $\hat\tau$ symm. & $\hat\ell(a,b)$ & $\widehat{\mathrm{GSTA}}$ & min.\ eig.\\
+\midrule
+EAP & SSEA & +0.95 & +1.01 & +1.42 & 0.260 & 0.053\\
+EAP & EUR & -0.08 & -0.09 & -0.10 & 0.546 & 0.023\\
+EAP & MENA & +0.06 & +0.08 & +0.07 & 0.606 & 0.043\\
+EAP & SSA & +0.88 & +0.96 & +1.28 & 1.142 & 0.019\\
+EAP & LAC & -0.02 & -0.02 & -0.02 & 0.909 & 0.005\\
+SSEA & EUR & -0.95 & -0.93 & -1.41 & 0.198 & 0.186\\
+SSEA & MENA & +0.28 & +0.35 & +0.36 & 0.176 & 0.201\\
+SSEA & SSA & +1.53 & +1.56 & +2.65$^\dagger$ & 0.816 & 0.015\\
+SSEA & LAC & +0.28 & +0.18 & +0.36 & 0.406 & 0.009\\
+EUR & MENA & +0.14 & +0.33 & +0.18 & 0.156 & 0.312\\
+EUR & SSA & +1.67 & +1.70 & +3.00$^\dagger$ & 0.819 & 0.013\\
+EUR & LAC & +1.36 & +1.52 & +2.24 & 0.285 & 0.016\\
+MENA & SSA & +1.41 & +1.42 & +2.36 & 0.416 & 0.017\\
+MENA & LAC & +0.64 & +0.64 & +0.87 & 0.089 & 0.054\\
+SSA & LAC & -1.65 & -1.68 & -2.95$^\dagger$ & 0.242 & 0.008\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Structural influence and counterfactual perturbations}\label{sec:influence}
+
+We computed the gradients of Section~\ref{sec:sensitivity} at the selected couplings of the main specification, re-solved to a gap of $10^{-12}$. All selections are regular. In each of the 21 year-level problems the three starts converge to the same coupling (largest relative difference $9\times10^{-6}$), and the smallest eigenvalue of the scaled Hessian lies between 0.015 and 0.049. In each of the 540 regional cells all four starts reach the same value. Re-solved central differences agree with the analytic gradients to relative errors of $2\times10^{-6}$ for $\Delta(G_{2020},G_{2021})$ and $1\times10^{-6}$ for $a(2020)$. For the regional G-STA and lead--lag indices of EAP and SSEA the errors are $8\times10^{-6}$ and $9\times10^{-6}$ (Supplement Table~S14). We report derivatives on the scales on which the data are measured. These are \emph{semi-elasticities} $\partial\mathcal S/\partial\log x$ with respect to the cost of a corridor, the LSCI of an economy and its throughput, holding the pooled standardization constants fixed. A 1\% change of $x$ changes $\mathcal S$ by about $0.01\,\partial\mathcal S/\partial\log x$, and winsorized costs have zero semi-elasticity. The \emph{leverage} of a channel, $0.01\sum|\partial\mathcal S/\partial\log x|$, is the first-order change caused by a 1\% change of every input of the channel in its most effective direction.
+
+\emph{Annual anomalies.} Table~\ref{tab:maps} and Figure~\ref{fig:sens} summarize the sensitivity of the anomaly scores. Locally, the three channels are of comparable importance. The leverage of a year's own costs is $7$--$15\times10^{-4}$, about 1\% of $a(t)$, against $3$--$6\times10^{-4}$ for connectivity and $4$--$7\times10^{-4}$ for throughput. This complements the Shapley attribution, which assigns 86\%--98\% of the realized changes to the geometry. Costs move far more from year to year than connectivity or throughput, so most of the realized change is structural even though a unit change of an attribute matters about as much. The costs of the other five years have about the same leverage on $a(t)$ as the year's own costs, because every anomaly score averages comparisons.
+
+Sensitivity is concentrated. About 3\%--4\% of the roughly 6{,}400 observed corridors carry half of the corridor leverage of each year, and 21\%--24\% of the economies carry half of the node influence. The influence $S_i$ of an economy is strongly associated with its mass (Spearman correlations 0.70--0.87). China, Hong Kong SAR is the most influential economy in every year, followed by China and Singapore (Figure~\ref{fig:sens}(a); Supplement Table~S15). The influential corridors are nevertheless spread across the map. Corridors within regions account for only 7\%--9\% of the corridor sensitivity, and the largest blocks are the corridors from East Asia and from South and South-East Asia to Europe (9\% and 7\%; Figure~\ref{fig:sens}(c)). The sensitivity profile is stable from year to year (Spearman correlations between years 0.64--0.75), but the identity of the most influential corridors is not: two years share only 18\%--35\% of their hundred most influential corridors, which reflects the noise in pair-level costs.
+
+The signs are informative. A cost increase would make the year more anomalous on 47\% and 45\% of the corridors in 2016 and 2021, against 28\%--31\% in 2017--2020, in line with the higher cost levels at the ends of the window. Between 39\% and 51\% of the squared corridor gradient lies in the antisymmetric direction. This is close to the 43\%--49\% antisymmetric share of the structural energy, so directional perturbations matter as much locally as in the realized change. The largest sensitivity in 2020, on the corridor from China, Hong Kong SAR to the United Arab Emirates, has the opposite sign to that of the reverse corridor, so the anomaly responds to a reversal of the cost asymmetry on that pair (Supplement Table~S16). Gradients of the raw value $V_\varepsilon$ instead of the debiased discrepancy preserve the ranking of corridors (Spearman correlations of magnitudes 0.95--0.996). However, they misstate magnitudes by 5\%--18\% in norm, and omitting the second self-argument misstates them by half as much.
+
+\emph{Regional trajectories and timing.} Table~\ref{tab:regsens} reports which economies carry the sensitivity of the lead--lag index. First, in comparisons between regions the node attributes dominate local sensitivity. Connectivity carries 66\%--89\% of the leverage of $\hat\tau$, throughput most of the rest, and corridor costs only 1\%--6\%; the same holds for G-STA. Between different node sets the coupling is anchored by attributes and masses, whereas a region contains few corridors. Second, timing and dissimilarity are carried by partly different relations: the Spearman correlation between the corridor sensitivity profiles of $\hat\tau$ and of G-STA is 0.37--0.58. By contrast, the G-STA profile is almost the same as that of the comparison of the same years (median correlation 0.95, minimum 0.85), so allowing the alignment to adjust barely reorders the influence of corridors. Third, the antisymmetric share of the corridor gradient of $\hat\tau$ is 0.26--0.46 (mean 0.37), and it is smaller than that of G-STA in only 6 of the 15 pairs. The closeness of the directed and symmetrized indices in Table~\ref{tab:reg} is therefore a statement about the level of the index, not about its local sensitivity.
+
+The timing signal sits where the alignment is warped. For EAP and SSEA, 86\% of the leverage on the East Asian side comes from its states of 2017--2019, and 49\% on the South-East Asian side comes from its state of 2021. The invariances of Proposition~\ref{prop:gradll}(b) hold on the data to $10^{-12}$. Halving or doubling $\beta$ leaves the sensitivity ranking nearly unchanged (Spearman correlations at least 0.93), but for some pairs it moves the index itself substantially, for SSEA and LAC from 0.06 to 0.66. This is a reminder that six periods support only coarse statements about timing.
+
+\emph{Counterfactual perturbations.} We used the gradients to construct budgeted perturbations of corridor costs. Each perturbation was evaluated by re-solving every affected state-level problem with the portfolio and, separately, by following the original branch. A perturbation $u_{ik}$ is a change of the log cost bounded by $|u_{ik}|\le0.5$ (a factor of 1.65), with budget $B=\sum|u_{ik}|$; the gradient strategy is the solution of Proposition~\ref{prop:local}(c). It is compared with four allocations of the same budget. Three use the signs of the gradient: the heaviest pairs by $\mu_i\mu_k$, randomly chosen corridors, and an equal change of all corridors. They differ from the gradient strategy only in where the budget is spent. The fourth uses the data but not the gradient, moving the corridors with the largest observed cost changes. Perturbed costs are transformed with the baseline winsorization and scaling constants. These exercises are stress tests of the discrepancy, not evaluations of transport policy. We consider three questions (Table~\ref{tab:cf}, Figure~\ref{fig:cf}).
+
+(i) \emph{Which changes of the 2021 costs would most reduce the 2020--2021 structural change?} Changing 16 corridors ($B=8$) reduces $\Delta(G_{2020},G_{2021})=0.093$ by 5\%, and changing 256 corridors ($B=128$) reduces it by 23\%. Undoing the largest observed cost changes achieves 10\% with the same budget, and the other allocations at most 3\%.
+
+(ii) \emph{How robust is the finding that 2020 is not distinctive?} We perturbed the 2020 costs to raise the margin $a(2020)-\max_{t\neq2020}a(t)=-0.025$, which is negative because 2016 leads. The gradient strategy makes 2020 the most distinctive year with 256 corridors, 4\% of the 6{,}429 eligible ones. The mass-weighted allocation needs 2{,}048 corridors, and the cost-change, random and uniform allocations need 4{,}096 or all of them. An across-the-board increase of all 2020 costs leaves 2020 fourth at 5\% and 10\% and third at 25\%. It makes 2020 first only at 50\%, more than ten times the observed increase of the median cost from 2019 to 2020. The conclusion about 2020 is therefore robust to general cost shocks and to untargeted perturbations, but not to large changes concentrated on a few hundred hub corridors. The standard deviation of annual log changes of single-corridor costs, 0.86, exceeds the bound of 0.5, so the conclusion should be read as a statement about the network-wide pattern rather than about every corridor.
+
+(iii) \emph{Could corridor costs remove the alignment lead of East Asia over South and South-East Asia?} We perturbed the SSEA costs of all six years to move $\hat\tau(\mathrm{EAP},\mathrm{SSEA})=0.95$ towards zero. Changing 32 region-year corridors ($B=16$) along the gradient lowers it to 0.77, while the other allocations lower it to between 0.92 and 0.94. Consistent with the dominance of the attribute channel, the timing index is robust to cost perturbations of this size.
+
+First-order predictions were reliable throughout in direction and in the ranking of strategies, but accurate in magnitude only for small budgets. For the reductions in (i), the realized change was 87\% of the predicted change with two corridors and 64\% with 256. For the increases in (ii) it was 125\%--159\% (Supplement Table~S17). Both deviations have the sign implied by the curvature of the re-optimized value: moving a state towards another gains less than linearly, and moving it away gains more. For the index in (iii), which is not a discrepancy, the realized changes were 127\%--187\% of the predicted ones. The frozen-coupling bound of Proposition~\ref{prop:local}(a) held for the cross-term in all 72 perturbations of (i). None of the 1{,}680 re-solved problems changed branch, and the portfolio and branch-following values agreed in every case.
+
+\emph{Uncertainty.} We propagated independent multiplicative errors in the observed costs, with standard deviation $\sigma_m$ on the log scale, through the delta method of Section~\ref{sec:sensitivity}. The resulting standard deviations of the anomaly scores are $5$--$7\times10^{-4}$ for $\sigma_m=0.1$ and $1.2$--$1.7\times10^{-3}$ for $\sigma_m=0.25$. In 12 Monte Carlo replications per level, each re-solving all 21 problems, the empirical standard deviations were 73\%--92\% and 83\%--102\% of these values (Supplement Table~S18 and Figure~S7). The delta method thus captures the spread but not the bias, which is of second order. Noise adds discrepancy and raised every score by $2.3$--$2.4\times10^{-3}$ for $\sigma_m=0.1$, about five standard deviations, and by $1.3$--$1.5\times10^{-2}$ for $\sigma_m=0.25$; because the shift is almost the same for all years, the margins between years moved by at most $1.2\times10^{-3}$. 2016 ranked first and 2020 never ranked first in every replication. The margin of 2016 over 2020, 0.025, is 38 delta-method standard deviations for $\sigma_m=0.1$ and 15 for $\sigma_m=0.25$ (11 by Monte Carlo). Independent measurement error of this size therefore does not threaten the ranking, in contrast with the targeted perturbations of (ii). Dropping 5\% of the observed pairs at random in every year (four draws) left the ranking unchanged in every draw. It preserved the corridor sensitivity profile (Spearman correlations with the baseline 0.93--0.97, and 87\%--94\% of the hundred most influential corridors) and the influence of economies (correlations 0.975--0.996, and 90\%--100\% of the ten most influential).
+
+\begin{table}[hp]
+\caption{Local sensitivity of the annual anomaly scores ($\alpha=0.5$). Leverage: first-order change of $a(t)$ when every input of a channel changes by 1\% in its most effective direction; ``other years'' refers to the costs of the other five years. Share for half: smallest share of observed corridors (economies) accounting for half of the corridor leverage (of $\sum_iS_i$). Positive: share of corridors on which a cost increase raises $a(t)$. Antisym.: antisymmetric share of the squared corridor gradient on pairs observed in both directions. $\rho_\mu$: Spearman correlation of $S_i$ with $\mu_i$. Raw: relative error, in norm, of the gradient of the raw value. China, Hong Kong SAR has the largest $S_i$ in every year.}\label{tab:maps}
+\centering\scriptsize
+\begin{tabular}{lrrrrrrrrrrrr}
+\toprule
+ & & & \multicolumn{4}{c}{leverage ($\times10^{-4}$)} & \multicolumn{2}{c}{share for half} & & & & \\
+\cmidrule(lr){4-7}\cmidrule(lr){8-9}
+Year & $a(t)$ & rank & costs & LSCI & TEU & other years & corridors & economies & positive & antisym. & $\rho_\mu$ & raw\\
+\midrule
+2016 & 0.1277 & 1 & 15 & 6 & 5 & 11 & 0.035 & 0.21 & 0.47 & 0.39 & 0.87 & 0.05\\
+2017 & 0.1020 & 5 & 9 & 4 & 4 & 11 & 0.030 & 0.22 & 0.31 & 0.44 & 0.73 & 0.10\\
+2018 & 0.0973 & 6 & 7 & 3 & 5 & 12 & 0.034 & 0.21 & 0.28 & 0.43 & 0.72 & 0.18\\
+2019 & 0.1053 & 3 & 8 & 3 & 6 & 12 & 0.033 & 0.24 & 0.29 & 0.45 & 0.73 & 0.14\\
+2020 & 0.1027 & 4 & 8 & 4 & 5 & 12 & 0.032 & 0.23 & 0.30 & 0.51 & 0.70 & 0.15\\
+2021 & 0.1216 & 2 & 12 & 6 & 7 & 12 & 0.038 & 0.22 & 0.45 & 0.47 & 0.83 & 0.08\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig6_sensitivity.pdf}
+\caption{(a) Outgoing and incoming influence of each economy on $a(2020)$ (log-cost scale; marker area proportional to mass). (b) Leverage of a 1\% change by channel and year. (c) Share of the corridor sensitivity of the anomaly scores by origin and destination region, averaged over 2016--2021 (\%).}\label{fig:sens}
+\end{figure}
+
+\begin{table}[hp]
+\caption{Sensitivity of the regional lead--lag indices. $\hat\tau_{\beta/2}$, $\hat\tau_{2\beta}$: index with the temperature halved and doubled. Leading economies: largest total influence on $\hat\tau$ within each region. $\rho$: Spearman correlation of $|\nabla\hat\tau|$ with its value at the main temperature. Abbreviations as in Table~\ref{tab:reg}.}\label{tab:regsens}
+\centering\scriptsize
+\begin{tabular}{llrrrrllrr}
+\toprule
+ & & & & & & \multicolumn{2}{c}{leading economy for $\hat\tau$} & \multicolumn{2}{c}{$\rho$}\\
+\cmidrule(lr){7-8}\cmidrule(lr){9-10}
+$a$ & $b$ & $\hat\tau$ & $\hat\tau_{\beta/2}$ & $\hat\tau_{2\beta}$ & $\widehat{\mathrm{GSTA}}$ & in $a$ & in $b$ & $\beta/2$ & $2\beta$\\
+\midrule
+EAP & SSEA & +0.95 & +0.97 & +0.91 & 0.260 & Hong Kong SAR & Singapore & 0.99 & 1.00\\
+EAP & EUR & $-$0.08 & $-$0.08 & $-$0.12 & 0.546 & Hong Kong SAR & Russian Fed. & 0.99 & 0.98\\
+EAP & MENA & +0.06 & +0.03 & +0.11 & 0.606 & Hong Kong SAR & UAE & 1.00 & 0.99\\
+EAP & SSA & +0.88 & +0.46 & +1.10 & 1.142 & Hong Kong SAR & Mauritius & 0.96 & 0.96\\
+EAP & LAC & $-$0.02 & $-$0.01 & +0.05 & 0.909 & Hong Kong SAR & Panama & 0.96 & 0.95\\
+SSEA & EUR & $-$0.95 & $-$0.65 & $-$1.10 & 0.198 & Philippines & Russian Fed. & 0.93 & 0.96\\
+SSEA & MENA & +0.28 & +0.31 & +0.36 & 0.176 & Philippines & UAE & 0.99 & 0.98\\
+SSEA & SSA & +1.53 & +1.61 & +1.43 & 0.816 & Philippines & Mauritius & 0.98 & 0.98\\
+SSEA & LAC & +0.28 & +0.06 & +0.66 & 0.406 & Philippines & Panama & 0.98 & 0.93\\
+EUR & MENA & +0.14 & +0.26 & +0.03 & 0.156 & Russian Fed. & UAE & 0.99 & 0.99\\
+EUR & SSA & +1.67 & +1.83 & +1.48 & 0.819 & Germany & Mauritius & 0.97 & 0.98\\
+EUR & LAC & +1.36 & +1.41 & +1.26 & 0.285 & Malta & Panama & 1.00 & 0.99\\
+MENA & SSA & +1.41 & +1.38 & +1.37 & 0.416 & UAE & Togo & 0.98 & 0.99\\
+MENA & LAC & +0.64 & +0.49 & +0.80 & 0.089 & UAE & Panama & 0.96 & 0.97\\
+SSA & LAC & $-$1.65 & $-$1.84 & $-$1.45 & 0.242 & Mauritius & Panama & 0.99 & 0.99\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[hp]
+\caption{Counterfactual perturbations of corridor costs ($|u_{ik}|\le0.5$ in log cost, budget $B=\sum|u_{ik}|$; knapsack strategies change $2B$ corridors). (i) Relative change of $\Delta(G_{2020},G_{2021})$ when the 2021 costs are perturbed. (ii) Margin $a(2020)-\max_{t\ne2020}a(t)$ (baseline $-0.025$) when the 2020 costs are perturbed, and the smallest budget on the grid $\{8,32,128,512,1024,2048\}$ at which 2020 ranks first. (iii) $\hat\tau(\mathrm{EAP},\mathrm{SSEA})$ (baseline 0.954) when the SSEA costs of all years are perturbed. Random: mean over 5, 2 and 3 draws. All values re-solved with the portfolio.}\label{tab:cf}
+\centering\scriptsize
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+ & \multicolumn{3}{c}{(i) change of $\Delta$, \%} & \multicolumn{4}{c}{(ii) margin after} & \multicolumn{2}{c}{(iii) $\hat\tau$ after}\\
+\cmidrule(lr){2-4}\cmidrule(lr){5-8}\cmidrule(lr){9-10}
+Strategy & $B=8$ & $B=32$ & $B=128$ & $B=128$ & $B=512$ & $B=2048$ & first at $B$ & $B=8$ & $B=16$\\
+\midrule
+gradient & $-5.3$ & $-12.0$ & $-23.3$ & $+0.0003$ & $+0.0171$ & $+0.0276$ & 128 & 0.818 & 0.769\\
+cost-change & $-0.5$ & $-2.8$ & $-9.8$ & $-0.0174$ & $-0.0073$ & $+0.0093$ & 2048 & -- & --\\
+mass-weighted & $-0.0$ & $-0.5$ & $-1.7$ & $-0.0141$ & $-0.0017$ & $+0.0225$ & 1024 & 0.931 & 0.916\\
+random & $-0.1$ & $-0.2$ & $-1.1$ & $-0.0225$ & $-0.0160$ & $+0.0107$ & 2048 & 0.945 & 0.935\\
+uniform & $-0.2$ & $-0.7$ & $-2.8$ & $-0.0237$ & $-0.0192$ & $+0.0046$ & 2048 & 0.944 & 0.933\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig7_counterfactual.pdf}
+\caption{Counterfactual perturbations: re-solved values by strategy and budget (solid; random: mean and range over draws) and first-order predictions of the gradient strategy (dashed). (i) Relative change of $\Delta(G_{2020},G_{2021})$. (ii) Margin of 2020 over the leading year; above the dotted line 2020 is the most distinctive year. (iii) $\hat\tau(\mathrm{EAP},\mathrm{SSEA})$.}\label{fig:cf}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Discussion}
+\label{sec:disc}
+
+G-STA treats a network trajectory as an ordered sequence of attributed, directed, partially observed relational spaces and compares two such sequences by optimal transport within periods and soft alignment across periods. Three computational points proved decisive. The gradient of the directed GW energy must include the adjoint term; observation masks can be built into the cubic-time factorization; and the debiased discrepancy is meaningful only if it is a deterministic function of the pair of states, which requires an explicit treatment of non-convexity. With a safeguarded step, the implemented algorithm satisfies the conditions of its convergence theorem, and the computed discrepancies obey the symmetry and antisymmetry properties that the theory predicts.
+
+The simulations clarify when the added complexity pays off. Directed G-STA is needed when change is directional; mass weighting matters when change concentrates on important nodes; and the coupling, which distinguishes G-STA from a mass-weighted comparison of matched entries, matters when node identities are not reliable or when networks with different node sets are compared. For pure changes of mass or attributes, simple summaries and attribute-only comparisons are more powerful.
+
+A central distinction in the present framework is between mathematical properties of the globally optimized discrepancy and numerical properties of its computed multi-start approximation.
+The convergence guarantee establishes stationarity, rather than global optimality, and the accuracy of the debiased discrepancy depends on the optimization errors of both cross-state and self-state comparisons.
+Similarly, observation masks avoid explicit imputation without generally correcting for informative missingness. The interpretation of the structural mixing parameter depends on mass normalization, and the lead--lag correction is exact only under an idealized shift model.
+These distinctions delimit the scope of the theoretical and empirical conclusions and identify directions for future statistical analysis.
+
+The sensitivity layer turns G-STA from a measurement into a diagnostic. Because the reported discrepancies are debiased, so must be their derivatives. Gradients of the raw value misstate corridor sensitivities by 5\%--18\% in the application and do not vanish when a state is compared with a copy of itself. The trajectory-level gradient weights state-level gradients by expected alignment frequencies, and the gradient of the lead--lag index is a covariance over alignment paths, which explains why timing sensitivity disappears at zero temperature. First-order predictions identified effective perturbations far beyond the range in which they were accurate in magnitude. Realized changes were 64\%--87\% of predicted reductions of a discrepancy and 125\%--159\% of predicted increases, as the curvature of the re-optimized value implies, and no perturbation changed the selected branch. The counterfactual exercises say which feasible changes of the inputs would move the measured quantities, not what an intervention would achieve in the transport market.
+
+Several limitations remain. The certificate guarantees stationarity, not global optimality; for comparisons between different node sets no initialization dominated, and our portfolio controls but does not eliminate optimization error. Non-negativity of the debiased discrepancies is not guaranteed a priori; we verify it, and the positive-definiteness condition for G-STA, on the states at hand. The lead--lag index measures precedence in alignment; its boundary correction is exact only in an idealized limit, and short panels limit what can be learned about timing. The tuning parameters $(\alpha,\gamma,\varepsilon,\beta)$ are choices; standardizing the inputs makes $\alpha$ interpretable as the relative weight of geometry and attributes, our empirical conclusions were stable over the ranges examined, and the lead--lag index was insensitive to $\beta$ over a thirty-fold range, but a principled selection rule would be useful. Our solver is not competitive for balanced problems without masks, where established conditional gradient solvers are much faster. Finally, the node subsampling we use assesses sensitivity to the composition of the network, not sampling error in the measured relations; inference for GW-type discrepancies in the spirit of \citet{sommerfeld2018inference} remains open. The sensitivity results are local and conditional on fixed masks, fixed standardization constants and the selected branches; changes of the observation pattern require re-solving rather than gradients, and the delta-method uncertainty statements rest on an assumed model of independent cost errors.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{Disclosure statement}
+The authors report there are no competing interests to declare.
+
+\section*{Funding}
+No funding has been received.
+
+\section*{Data availability statement}
+The data are publicly available from UNCTADstat.
+
+
+\bibliographystyle{apalike}
+\bibliography{references}
+
+\end{document}

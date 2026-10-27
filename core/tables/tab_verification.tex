@@ -1,0 +1,22 @@
+\begin{tabular}{lr}
+\toprule
+Check & Result\\
+\midrule
+$\nabla Q=T+T^\ast$ vs.\ explicit tensor $L_{ijkl}$ (max.\ rel.\ error; masks, $n\ne m$) & $4.8\times10^{-16}$\\
+\quad the symmetric-case expression $2T$ vs.\ explicit tensor (max.\ rel.\ error) & 0.68\\
+Envelope gradients vs.\ re-solved central differences (max.\ rel.\ error, 18 blocks) & $1.5\times10^{-7}$\\
+\quad weighting $C$ by $rc^\top$ instead of $rr^\top$ (rel.\ error) & 0.60\\
+Frank--Wolfe gap at termination, Algorithm~1 (median; max) & $4.7\times10^{-14}$; $8.7\times10^{-14}$\\
+Frank--Wolfe gap at termination, symmetric-case linearization (median; max) & $6.3\times10^{-3}$; $2.4\times10^{-2}$\\
+Frank--Wolfe gap at termination, half-gradient fixed point (median; max) & $1.3\times10^{-2}$; $2.8\times10^{-2}$\\
+Audit of Algorithm~1, 180 runs: monotone / sufficient decrease at every step & 100\% / 100\%\\
+\quad steps with negative curvature $a<0$; refined step accepted (median share) & 0.95; 0.97\\
+\quad residual $\|\nabla J_\varepsilon\|_\infty$ at termination (median; max) & $1.5\times10^{-6}$; $3.1\times10^{-6}$\\
+Lead--lag: enumeration of all paths vs.\ soft-DTW gradient (max.\ abs.\ difference) & $4.0\times10^{-15}$\\
+\quad idealized shift, $2\ell<T$, $\beta/\kappa\le0.1$: $|\tau-\ell(T-1)/(T+\ell)|$ (max.) & $5.4\times10^{-5}$\\
+\quad idealized shift, $2\ell>T$, $\beta/\kappa\le0.1$: $|\tau|$ (max.) & $1.1\times10^{-4}$\\
+Cross-network pairs improved by 20 extra random starts (of 12); max.\ rel.\ improvement & 3; 0.059\\
+$|V(G,H)-V(H,G)|$ (max.); G-STA between a trajectory and a copy & $1.7\times10^{-16}$; $6.9\times10^{-18}$\\
+$\alpha=0$ vs.\ POT \texttt{sinkhorn\_unbalanced}; soft-DTW vs.\ enumeration (max.\ errors) & $5.7\times10^{-12}$; $4.0\times10^{-15}$\\
+\bottomrule
+\end{tabular}

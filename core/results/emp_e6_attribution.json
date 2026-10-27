@@ -1,0 +1,74 @@
+{
+ "2020-2021": {
+  "Delta": 0.09280846571703236,
+  "first_order_sum": 0.13586211491894984,
+  "fd_check": [
+   {
+    "i": "China",
+    "j": "Spain",
+    "analytic": 0.0009336672705711688,
+    "finite_difference": 0.0009337488379723701
+   },
+   {
+    "i": "Malta",
+    "j": "China, Hong Kong SAR",
+    "analytic": 0.0009145600450338535,
+    "finite_difference": 0.0009145407792177095
+   },
+   {
+    "i": "Japan",
+    "j": "China",
+    "analytic": 0.0008228019226761863,
+    "finite_difference": 0.0008227970207941303
+   }
+  ]
+ },
+ "2016-2017": {
+  "Delta": 0.10113659251942655,
+  "first_order_sum": 0.13701771521166756,
+  "fd_check": [
+   {
+    "i": "Malta",
+    "j": "China",
+    "analytic": -0.001446941343565349,
+    "finite_difference": -0.0014469661510640994
+   },
+   {
+    "i": "United Arab Emirates",
+    "j": "China, Hong Kong SAR",
+    "analytic": 0.0012711690562735205,
+    "finite_difference": 0.0012711888749961098
+   },
+   {
+    "i": "China",
+    "j": "China, Hong Kong SAR",
+    "analytic": -0.001214401831698338,
+    "finite_difference": -0.0012144092426114028
+   }
+  ]
+ },
+ "2019-2020": {
+  "Delta": 0.08996225772826053,
+  "first_order_sum": 0.11368848019332702,
+  "fd_check": [
+   {
+    "i": "Malta",
+    "j": "China",
+    "analytic": 0.0014543503967833094,
+    "finite_difference": 0.0014543561230317967
+   },
+   {
+    "i": "United Arab Emirates",
+    "j": "China, Hong Kong SAR",
+    "analytic": 0.0012446088687714473,
+    "finite_difference": 0.0012446198779936246
+   },
+   {
+    "i": "China, Hong Kong SAR",
+    "j": "United Arab Emirates",
+    "analytic": -0.0009948590778762097,
+    "finite_difference": -0.0009948667625825358
+   }
+  ]
+ }
+}

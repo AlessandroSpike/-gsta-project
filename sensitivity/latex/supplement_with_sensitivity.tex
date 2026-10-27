@@ -1,0 +1,717 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage{url}
+
+\addtolength{\oddsidemargin}{-.5in}%
+\addtolength{\evensidemargin}{-1in}%
+\addtolength{\textwidth}{1in}%
+\addtolength{\textheight}{1.7in}%
+\addtolength{\topmargin}{-1in}%
+
+\renewcommand{\thesection}{S\arabic{section}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thefigure}{S\arabic{figure}}
+\renewcommand{\theequation}{S\arabic{equation}}
+\newcommand{\KL}{\operatorname{KL}}
+\newcommand{\R}{\mathbb{R}}
+
+\begin{document}
+\def\spacingset#1{\renewcommand{\baselinestretch}{#1}\small\normalsize}\spacingset{1}
+
+\begin{center}
+{\LARGE\bf Supplementary Material for ``Graph Spatio-Temporal Alignment for Trajectories of Directed, Partially Observed Attributed Networks''}
+\end{center}
+\bigskip
+
+\noindent This supplement contains the proofs (Section~\ref{sec:proofs}), algorithmic details (Section~\ref{sec:alg}), additional verification, convergence-audit and benchmark results (Section~\ref{sec:verif}), simulation designs and additional results (Section~\ref{sec:simdesign}), data and preprocessing (Section~\ref{sec:data}), additional empirical results (Section~\ref{sec:addemp}) proofs and results for the sensitivity analysis (Section~\ref{sec:sens}), and a guide to the reproducibility package (Section~\ref{sec:repro}). Numbered results without the prefix S refer to the main text.
+
+\spacingset{1.45}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Proofs}\label{sec:proofs}
+
+Throughout, $G=(\mu,F,C,W)$ on $n$ nodes, $H=(\nu,G,D,W')$ on $m$ nodes, $r=P\mathbf 1$, $c=P^\top\mathbf1$, and $L_{ijkl}=w_{ik}w'_{jl}(c_{ik}-d_{jl})^2$, so that $Q(P)=\sum_{ijkl}L_{ijkl}p_{ij}p_{kl}$.
+
+\paragraph{Proof of Proposition~1.}
+(a) Each term of $J_0$ is non-negative. $J_0$ is continuous on $\R_+^{n\times m}$ (with $0\log0=0$) and coercive because $\KL(r|\mu)\ge\sum_i\{r_i\log(r_i/\mu_i)-r_i\}$ grows superlinearly in $\|P\|_1$; sublevel sets are compact and the minimum is attained. (b) For $P\in\R_+^{n\times m}$, $J^{HG}_0(P^\top)=J^{GH}_0(P)$: the feature term is invariant because $m$ is symmetric; $Q^{HG}(P^\top)=\sum w'_{jl}w_{ik}(d_{jl}-c_{ik})^2p_{ij}p_{kl}=Q^{GH}(P)$; and the two KL terms are exchanged. Transposition is a bijection between the feasible sets, and $E$ is transposition-invariant, so $D_0$ and $V_\varepsilon$ are symmetric. (c) $P=\operatorname{diag}(\mu)$ gives $J_0=0$. (d) If $\sigma$ exists, the coupling $p_{i\sigma(i)}=\mu_i$ gives $J_0=0$. Conversely, at a minimizer with $J_0(P)=0$ the KL terms vanish, so $P\mathbf1=\mu$ and $P^\top\mathbf1=\nu$; since $\alpha<1$ the feature term vanishes, so $p_{ij}>0$ only if $f_i=g_j$. Distinct attributes imply that each row and each column contains at most one positive entry; positive row and column sums then force a bijection $\sigma$ with $p_{i\sigma(i)}=\mu_i=\nu_{\sigma(i)}$ and $g_{\sigma(i)}=f_i$, so $n=m$. Since $\alpha>0$ and all weights are positive, $Q(P)=\sum_{i,k}w_{ik}w'_{\sigma(i)\sigma(k)}(c_{ik}-d_{\sigma(i)\sigma(k)})^2\mu_i\mu_k=0$ forces $d_{\sigma(i)\sigma(k)}=c_{ik}$. \qed
+
+\paragraph{Proof of Corollary~1.}
+The argument for the KL and feature terms in the proof of Proposition~1(d) does not use the weights, so $J_0(P)=0$ again forces $P$ to be a permutation coupling with $\nu_{\sigma(i)}=\mu_i$ and $g_{\sigma(i)}=f_i$. For such $P$, $Q(P)=\sum_{i,k}w_{ik}w'_{\sigma(i)\sigma(k)}(c_{ik}-d_{\sigma(i)\sigma(k)})^2\mu_i\mu_k$ vanishes if and only if $c_{ik}=d_{\sigma(i)\sigma(k)}$ whenever $w_{ik}w'_{\sigma(i)\sigma(k)}>0$. For the last statement, $J_0$ depends on $d_{jl}$ only through terms multiplied by $w'_{jl}$ and, under persistent identities, the zero-value coupling is the identity, for which only pairs with $w_{ik}w'_{ik}>0$ enter; hence altering $d_{ik}$ on a pair unobserved in either state leaves the conclusion $D_0(G,H)=0$ unchanged. More generally, $J_0$ does not depend on $d_{jl}$ when $w'_{jl}=0$. \qed
+
+\paragraph{Proof of Proposition~2.}
+Exchanging the dummy pairs $(i,j)\leftrightarrow(k,l)$ and using $w_{ki}w'_{lj}=w_{ik}w'_{jl}$ gives $Q(P)=\frac12\sum w_{ik}w'_{jl}\{(c_{ik}-d_{jl})^2+(c_{ki}-d_{lj})^2\}p_{ij}p_{kl}$. For reals $a,a',b,b'$ with $\bar a=(a+a')/2$, $\check a=(a-a')/2$ and likewise for $b$, $(a-b)^2+(a'-b')^2=2(\bar a-\bar b)^2+2(\check a-\check b)^2$. With $a=c_{ik}$, $a'=c_{ki}$, $b=d_{jl}$, $b'=d_{lj}$ this yields $Q_{C,D}=Q_{C^S,D^S}+Q_{C^A,D^A}$, and both are weighted sums of squares. \qed
+
+\paragraph{Proof of Proposition~3.}
+Since $x\log x-x\ge-1$, $J_\varepsilon\ge-\varepsilon nm$; continuity and coercivity follow as above. If a local minimizer had $p_{ab}=0$, the right derivative of $t\mapsto J_\varepsilon(P+te_{ab})$ at $0$ would be $-\infty$ because of the term $\varepsilon\log t$ (the other terms have bounded derivatives from above), a contradiction; hence local minimizers are interior and stationary. Coercivity is uniform in $\varepsilon\in(0,1]$, so all minimizers lie in a compact set $\mathcal K$ on which $|E|\le c_{\mathcal K}$; then $|V_\varepsilon-D_0|\le\varepsilon c_{\mathcal K}$, and a cluster point $\bar P$ of minimizers satisfies $J_0(\bar P)\le\lim\{V_\varepsilon+\varepsilon c_{\mathcal K}\}=D_0$. \qed
+
+\paragraph{Proof of Lemma~1.}
+(a) $Q(P+\tau D)=Q(P)+\tau\{\langle T(P),D\rangle+\langle T(D),P\rangle\}+\tau^2\langle T(D),D\rangle$ exactly, and $\langle T(D),P\rangle=\langle D,T^\ast(P)\rangle$ with $T^\ast(P)_{kl}=\sum_{ij}L_{ijkl}p_{ij}$. (b) Symmetric inputs give $L_{klij}=L_{ijkl}$. For $n=m=2$, unit weights, $D=0$ and $C=\left(\begin{smallmatrix}0&1\\0&0\end{smallmatrix}\right)$, $T(P)_{1j}=r_2$ while $T^\ast(P)_{1j}=0$. (c) Expand $(c_{ik}-d_{jl})^2$ and collect terms. \qed
+
+\paragraph{Proof of Proposition~4.}
+For $X\ge0$ let $h_P(X)=\langle\nabla f(P),X\rangle+g(X)$. It is strictly convex and coercive, and its unique minimizer $Q=Q(P)$ is strictly positive (as in Proposition~3), so $\nabla h_P(Q)=0$.
+
+(a) Because $Q$ is an interior minimizer, $\mathrm{gap}(P)=h_P(P)-h_P(Q)=B_{h_P}(P,Q)$, the Bregman divergence of $h_P$, which equals the Bregman divergence of $g$ because the linear part does not contribute. The Bregman divergences of the two KL terms are non-negative by convexity, and that of $\varepsilon E$ is $\varepsilon\sum_{ij}\{p_{ij}\log(p_{ij}/q_{ij})-p_{ij}+q_{ij}\}=\varepsilon\KL(P|Q)$. Hence $\mathrm{gap}(P)\ge\varepsilon\KL(P|Q)\ge0$. The gap vanishes if and only if $P=Q$, that is, if and only if $P$ minimizes $h_P$, which for interior $P$ is equivalent to $\nabla f(P)+\nabla g(P)=\nabla J_\varepsilon(P)=0$.
+
+\emph{Residual bound.} Suppose all entries of $P$ and $Q$ lie in $[p_{\min},p_{\max}]$ and their row and column sums are at least $r_{\min}$ and $c_{\min}$. On the segment $[P,Q]$ the Hessian of $\varepsilon E$ is at least $(\varepsilon/p_{\max})I$, so $\mathrm{gap}(P)\ge(\varepsilon/2p_{\max})\|P-Q\|_F^2$. Since $\nabla f(P)+\nabla g(Q)=0$, $\nabla J_\varepsilon(P)=\nabla g(P)-\nabla g(Q)$, and the entrywise mean value theorem gives $\|\nabla g(P)-\nabla g(Q)\|_F\le L_g\|P-Q\|_F$ with $L_g=\varepsilon/p_{\min}+\gamma m/r_{\min}+\gamma n/c_{\min}$. Therefore $\|\nabla J_\varepsilon(P)\|_F\le L_g\{2p_{\max}\mathrm{gap}(P)/\varepsilon\}^{1/2}$. Because entropic couplings have entries of order $\exp(-\mathrm{cost}/\varepsilon)$, $p_{\min}$ is typically tiny and the bound is uninformative; this is why residuals are reported separately.
+
+(b) Along $D=Q-P$, $f(P+\tau D)=f(P)+\tau\langle\nabla f(P),D\rangle+\tau^2a$ exactly (Lemma~1), with $a=\alpha Q(D)$. Convexity of $g$ gives $g(P+\tau D)\le(1-\tau)g(P)+\tau g(Q)$ for $\tau\in[0,1]$, hence $J_\varepsilon(P+\tau D)\le U(\tau)=J_\varepsilon(P)-\tau\,\mathrm{gap}(P)+a\tau^2$. If $a\le0$, $\tau_{\mathrm{ub}}=1$ and $U(1)\le J_\varepsilon(P)-\mathrm{gap}(P)$. If $a>0$ and $\mathrm{gap}/(2a)\le1$, $U(\tau_{\mathrm{ub}})=J_\varepsilon(P)-\mathrm{gap}^2/(4a)$; if $\mathrm{gap}/(2a)>1$, $U(1)=J_\varepsilon(P)-\mathrm{gap}+a<J_\varepsilon(P)-\mathrm{gap}/2$. The accepted step satisfies $J_\varepsilon(P^{(r+1)})\le J_\varepsilon(P^{(r)}+\tau_{\mathrm{ub}}D)\le U(\tau_{\mathrm{ub}})$ by construction, which gives the stated decrease. No property of the refined search is used.
+
+(c) By (b) the iterates stay in the compact sublevel set $\mathcal S$. The oracle map $P\mapsto Q(P)$ is continuous (minimizer of a strictly convex coercive function depending continuously on its linear part), so $D^{(r)}$ is bounded on $\mathcal S$, and $a_r\le\alpha\max_{ijkl}L_{ijkl}\|D^{(r)}\|_1^2\le A<\infty$. Summing (b) gives $\sum_r\min\{\mathrm{gap}_r/2,\mathrm{gap}_r^2/(4A)\}\le J_\varepsilon(P^{(0)})+\varepsilon nm<\infty$, so $\mathrm{gap}_r\to0$. The gap is continuous on the closed orthant, so every limit point $\bar P$ has $\mathrm{gap}(\bar P)=0$, i.e.\ $\bar P=Q(\bar P)>0$, and $\bar P$ is stationary. \qed
+
+\paragraph{Proof of Proposition 5.}
+By definition, $\widehat V_\varepsilon(G,H)=V_\varepsilon(G,H)+e_\varepsilon(G,H)$. Substituting this expression into the definition of $\widehat\Delta_\varepsilon$ and subtracting the definition of $\Delta_\varepsilon$ gives $\widehat\Delta_\varepsilon-\Delta_\varepsilon=e_\varepsilon(G,H)-\frac12e_\varepsilon(G,G)-\frac12e_\varepsilon(H,H)$. The bound follows from the triangle inequality and the non-negativity of the three optimization errors.
+\qed
+
+\paragraph{Proof of Proposition~6 and the portfolio estimate.}
+$\Phi(P,\theta)=\nabla_PJ_\varepsilon(P;\theta)$ is $C^\infty$ on the open orthant times the parameter set. At $(P^\star,\theta_0)$, $\Phi=0$ and $\partial_P\Phi$ is non-singular, so the implicit function theorem gives a unique $C^1$ branch $P^\star(\theta)$, and $\nabla v=\partial_\theta J_\varepsilon+(\partial_\theta P^\star)^\top\nabla_PJ_\varepsilon=\partial_\theta J_\varepsilon$. The partial derivatives follow by direct differentiation; for example $c_{ab}$ enters $Q$ only through terms with $(i,k)=(a,b)$, so $\partial Q/\partial c_{ab}=2w_{ab}\{c_{ab}(PW'P^\top)_{ab}-(P(W'\circ D)P^\top)_{ab}\}$, and $\partial\KL(r|\mu)/\partial\mu_i=1-r_i/\mu_i$. For the portfolio estimate, suppose that near $\theta_0$ each candidate $k$ of the portfolio follows a $C^1$ branch with value $v_k(\theta)$, so that $\widehat V_\varepsilon=\min_kv_k$. If the minimum is attained by a unique $k^\star$ at $\theta_0$, continuity gives $\widehat V_\varepsilon=v_{k^\star}$ in a neighbourhood and the formulas are its gradient. If several candidates attain the minimum, $\widehat V_\varepsilon$ is the minimum of finitely many $C^1$ functions and has directional derivatives $\min_{k\in\mathcal K^\star}\nabla v_k(\theta_0)^\top h$ along $h$, where $\mathcal K^\star$ is the set of minimizing candidates; it need not be differentiable. \qed
+
+
+\paragraph{Proof of Proposition~7.}
+(a) Delannoy numbers satisfy the same recursion as the number of paths. (b) $e^{-c^\star/\beta}\le\sum_Ae^{-c_A/\beta}\le|\mathcal A_{T,S}|e^{-c^\star/\beta}$ with $c_A=\langle A,\Delta\rangle$ and $c^\star=\min_Ac_A$. (c) Differentiating gives $\mathbb E_\beta[A_{ts}]$; every path contains $(1,1)$ and $(T,S)$. (d) Transposition is a cost-preserving bijection between $\mathcal A_{T,S}$ and $\mathcal A_{S,T}$. (e) The diagonal path has cost $0$ and other paths exist when $T\ge2$. \qed
+
+\paragraph{Proof of Proposition~8.}
+By the definition of soft-DTW,\\
+$
+\mathcal A_\beta(\Delta^{GH})
+=
+-\beta\log
+\sum_{A\in\mathcal A_{T,S}}
+\exp\left\{
+-\frac{\langle A,\Delta^{GH}\rangle}{\beta}
+\right\}.
+$
+Since
+$
+\exp\left\{
+-\frac{\langle A,\Delta^{GH}\rangle}{\beta}
+\right\}
+=
+\prod_{(t,s)\in A}
+k_\beta(G_t,H_s),
+$
+we obtain
+$
+\mathcal A_\beta(\Delta^{GH})
+=
+-\beta\log K_\beta(\mathcal G,\mathcal H).
+$
+Substitution into Definition 2 gives the
+claimed logarithmic representation.
+Suppose now that $K_\beta$ is positive
+semidefinite on the trajectories under
+consideration. The Cauchy--Schwarz inequality
+for positive-semidefinite kernels yields
+$
+K_\beta(\mathcal G,\mathcal H)^2
+\leq
+K_\beta(\mathcal G,\mathcal G)
+K_\beta(\mathcal H,\mathcal H).
+$
+All three kernel values are strictly positive
+because the state kernel is strictly positive
+and the alignment-path sets are nonempty.
+Consequently,
+$
+0<
+\frac{K_\beta(\mathcal G,\mathcal H)}
+{\sqrt{
+K_\beta(\mathcal G,\mathcal G)
+K_\beta(\mathcal H,\mathcal H)}}
+\leq1.
+$
+Taking minus $\beta$ times the logarithm
+proves the result. \qed
+
+\paragraph{Proof of Proposition~9.}
+With $\alpha=0$ and $M_{ij}=C^{\mathrm{sp}}_{ij}$, $J_\varepsilon$ is the entropic unbalanced OT objective with ground cost $C^{\mathrm{sp}}$. For the second statement, Proposition~1(c,d) gives $D_0(G,H)>0=D_0(G,G)=D_0(H,H)$, and Proposition~3 gives $\Delta_\varepsilon(G,H)\to D_0(G,H)$. With $\alpha=0$ the objective does not involve the geometries, so states with equal masses and attributes have $\Delta_\varepsilon=0$. \qed
+
+\paragraph{Proof of Proposition~10.}
+(a) By Proposition~7(d), the alignment matrix of $\Delta^\top$ is $E^\top$, which reverses the sign of the offsets. (b) $\langle A,\Delta+\kappa\mathbf1\mathbf1^\top\rangle=\langle A,\Delta\rangle+\kappa|A|$; as $\kappa\to\infty$ the Gibbs distribution concentrates on the paths of minimal length, which for $T=S$ is the diagonal only.
+(c) Let $T=S$ and let a path have $h$ horizontal steps; it then has $h$ vertical and $T-1-h$ diagonal steps and visits $T+h$ cells, so $h=|A|-T$. Index the visited cells by $k=0,\dots,T+h-1$ and let $o_k=s-t$ at cell $k$. Since $o_0=o_{T+h-1}=0$ and each step changes the offset by $+1$, $-1$ or $0$, with at most $h$ steps of each sign, $|o_k|\le\min\{k,h,T+h-1-k\}$. Summing, $|\sum_ko_k|\le\sum_k\min\{k,h,T+h-1-k\}=h(h+1)/2+h(T-1-h)+h(h-1)/2=h(T-1)$, with equality for the path that takes all horizontal steps first and all vertical steps last. Hence $|\sum_{(t,s)\in A}(s-t)|\le(T-1)(|A|-T)$ for every path. Taking Gibbs expectations, $|\sum_{ts}(s-t)E_{ts}|\le(T-1)(\mathbb E_\beta|A|-T)$, and dividing by $\sum_{ts}E_{ts}=\mathbb E_\beta|A|$ gives the bound.
+(d) A cell has cost $\kappa$ unless its offset equals $\ell$. Since offsets start and end at $0$ and change by at most one per step, a path that visits the shifted diagonal visits each offset $0,\dots,\ell-1$ at least once before reaching it and at least once after leaving it, so it has at least $2\ell$ costly cells. The path with $\ell$ horizontal steps, then $T-1-\ell$ diagonal steps, then $\ell$ vertical steps has exactly $2\ell$ costly cells; any other path visiting the shifted diagonal has a diagonal step at an offset different from $\ell$, an offset above $\ell$, or a repeated offset below $\ell$, each of which adds a costly cell. A path that does not visit the shifted diagonal has all its $|A|\ge T$ cells costly, with equality only for the diagonal path. Therefore the minimal cost is $\kappa\min\{2\ell,T\}$: if $2\ell<T$ the shifted path is the unique minimizer, and if $2\ell>T$ the diagonal is. As $\beta/\kappa\to0$ the Gibbs distribution concentrates on the unique minimizer, $E$ converges to its indicator matrix, and $\tau$ converges to its average offset, $\ell(T-1)/(T+\ell)$ by the computation in (c), or to $0$ for the diagonal. \qed
+
+\paragraph{Exact decompositions.}
+$\Delta_\varepsilon(G,H)=\sum_k\{J^k(P^\star_{GH})-\frac12J^k(P^\star_{GG})-\frac12J^k(P^\star_{HH})\}$ over the four terms $k$ of $J_\varepsilon$, evaluated at the selected couplings. The two-player Shapley values satisfy $\phi_{\mathrm{geo}}+\phi_{\mathrm{node}}=v(\mathrm{both})$ because $v(\emptyset)=\Delta_\varepsilon(G_t,G_t)=0$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Algorithmic details}\label{sec:alg}
+
+\paragraph{Oracle.} $Q_{ij}=\exp\{(\phi_i+\psi_j-K_{ij})/\varepsilon\}$ with $\phi_i\leftarrow\lambda\varepsilon[\log\mu_i-\log\sum_j\exp\{(\psi_j-K_{ij})/\varepsilon\}]$, the analogous update for $\psi$, and $\lambda=\gamma/(\gamma+\varepsilon)$ \citep{chizat2018scaling}; iterations stop when the sup-norm change of the potentials is below $10^{-12}$, with potentials warm-started across iterations. The contraction factor per sweep is of order $\lambda^2$, which explains the slow convergence in the near-balanced regime ($\gamma\gg\varepsilon$).
+
+\paragraph{Safeguarded line search.} With $\varphi(\tau)=J_\varepsilon(P+\tau D)-J_\varepsilon(P)=b\tau+a\tau^2+g(P+\tau D)-g(P)$, each evaluation of $\varphi$ or $\varphi'$ costs $O(nm)$ because row and column sums of $P+\tau D$ are affine in $\tau$. The majorant step is $\tau_{\mathrm{ub}}=1$ if $a\le0$ and $\min\{1,\mathrm{gap}/(2a)\}$ otherwise. If $a\ge0$, $\varphi$ is convex and the refined step is obtained by 60 bisection steps on $\varphi'$; if $a<0$, $\varphi''=2a+g''$ with $g''$ convex in $\tau$, so $\varphi$ can have two local minima on $[0,1]$, and the refined step is obtained from a 33-point grid and 60 golden-section steps. The refined step is accepted only if $\varphi(\tau_{\mathrm{ref}})\le\varphi(\tau_{\mathrm{ub}})$.
+
+\paragraph{Stopping rule.} Algorithm~1 stops when $\mathrm{gap}\le10^{-9}\max\{1,|J_\varepsilon|\}$ ($10^{-12}$--$10^{-15}$ in the verification experiments) or after 3000 iterations; the gap criterion was met in all reported runs.
+
+\paragraph{Initializations.} \emph{Identity}: $\operatorname{diag}(\sqrt{\mu\circ\nu})+10^{-12}$ (same node sets). \emph{Product}: $\mu\nu^\top/\sqrt{\mu^\top\mathbf1\,\nu^\top\mathbf1}$. \emph{Attribute}: the exact solution of the convex $\alpha=0$ problem. \emph{Quantile}: north-west-corner coupling of the normalized masses after sorting the nodes of each state by their first attribute. \emph{Annealing}: Algorithm~1 for $\varepsilon\in\{1,0.5,0.2,0.1\}$ above the target and then at the target, each warm-started at the previous solution. \emph{Random} (diagnostics only): $Z\circ\mu\nu^\top$ rescaled, with $Z$ log-normal and drawn from a generator seeded by hashes of the two states, generated in a canonical orientation and transposed when the states are exchanged, so that the candidates are equivariant. Same-node comparisons use the identity, product and attribute starts; different node sets use product, attribute, quantile and annealing.
+
+\paragraph{Software and hardware.} Package \texttt{gsta} (Python 3.12.3, NumPy 2.4.4, SciPy 1.17.1, numba 0.68.0; POT 0.9.7 for cross-checks), double precision, one core of an Intel Xeon processor at 2.1~GHz with single-threaded OpenBLAS 0.3.31.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Additional verification, audit and benchmark results}\label{sec:verif}
+
+\paragraph{Gradients.} The factorized gradient $T+T^\ast$ was compared with the explicit tensor formula $\sum_{kl}(L_{ijkl}+L_{klij})p_{kl}$ and with central differences of $Q(P)$ on nine random instances (unmasked $5\times5$, masked $5\times5$, masked $6\times4$); the maximum relative differences were $4.8\times10^{-16}$ and $2.3\times10^{-9}$, while $2T$ differed by 39\%--68\%. Table~\ref{tab:grad} compares the envelope gradients of Proposition~5 with central differences (step $10^{-5}$) in which Algorithm~1 is re-run at each perturbed input.
+
+\begin{table}[h]
+\caption{Envelope gradients versus re-solved central differences.}\label{tab:grad}
+\centering\small
+\begin{tabular}{llrr}
+\toprule
+Instance & Block & max.\ abs.\ error & max.\ rel.\ error\\
+\midrule
+directed & $C$ & $1.4\times10^{-9}$ & $9.7\times10^{-8}$\\
+directed & $D$ & $7.8\times10^{-10}$ & $4.0\times10^{-8}$\\
+directed & $F$ & $4.2\times10^{-9}$ & $5.0\times10^{-8}$\\
+directed & $G$ & $5.0\times10^{-9}$ & $6.0\times10^{-8}$\\
+directed & $\mu$ & $2.0\times10^{-8}$ & $9.5\times10^{-8}$\\
+directed & $\nu$ & $3.1\times10^{-8}$ & $1.2\times10^{-7}$\\
+directed & $C$, with $rc^\top$ (incorrect) & $8.9\times10^{-3}$ & $6.0\times10^{-1}$\\
+directed+mask & $C$ & $1.6\times10^{-9}$ & $9.7\times10^{-8}$\\
+directed+mask & $D$ & $1.6\times10^{-9}$ & $1.1\times10^{-7}$\\
+directed+mask & $F$ & $6.2\times10^{-9}$ & $1.3\times10^{-7}$\\
+directed+mask & $G$ & $6.4\times10^{-9}$ & $1.4\times10^{-7}$\\
+directed+mask & $\mu$ & $5.4\times10^{-8}$ & $1.4\times10^{-7}$\\
+directed+mask & $\nu$ & $4.4\times10^{-8}$ & $1.5\times10^{-7}$\\
+different sizes & $C$ & $1.3\times10^{-9}$ & $7.2\times10^{-8}$\\
+different sizes & $D$ & $1.8\times10^{-9}$ & $7.9\times10^{-8}$\\
+different sizes & $F$ & $2.8\times10^{-9}$ & $2.1\times10^{-8}$\\
+different sizes & $G$ & $2.3\times10^{-9}$ & $1.3\times10^{-8}$\\
+different sizes & $\mu$ & $4.1\times10^{-8}$ & $4.7\times10^{-8}$\\
+different sizes & $\nu$ & $3.1\times10^{-8}$ & $1.5\times10^{-7}$\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\paragraph{Lead--lag index by exhaustive enumeration.} For $T=S\le6$ all monotone paths (up to 1{,}683) were enumerated and $\tau$ was computed from the exact Gibbs probabilities for the idealized shift of Proposition~9(d) with $\kappa=1$ and $\beta\in\{0.01,\dots,2\}$; for $T\in\{10,20,40\}$ the soft-DTW recursion was used. The enumeration agrees with the soft-DTW gradient to $4.1\times10^{-15}$. Table~\ref{tab:enum} shows that for $2\ell<T$ and $\beta/\kappa\le0.1$ the index equals the zero-temperature value $\ell(T-1)/(T+\ell)$ to at least four decimals, that it is further attenuated for larger $\beta/\kappa$, and that it collapses to zero when $2\ell>T$ (with ties between the two candidate paths at $2\ell=T$). The pathwise bound of Proposition~9(c) was never violated in 2{,}000 random cost matrices.
+
+\begin{table}[h]
+\caption{Lead--lag index for the idealized shift: finite-temperature values and the zero-temperature value.}\label{tab:enum}
+\centering\footnotesize
+\begin{tabular}{rrrrrrrr}
+\toprule
+$T$ & $\ell$ & $\beta/\kappa=0.05$ & $0.1$ & $0.2$ & $0.5$ & $1$ & $\ell(T-1)/(T+\ell)$\\
+\midrule
+6 & 0 & 0.0000 & 0.0000 & 0.0000 & -0.0000 & 0.0000 & 0.0000\\
+ & 1 & 0.7143 & 0.7143 & 0.7145 & 0.7008 & 0.5901 & 0.7143\\
+ & 2 & 1.2500 & 1.2500 & 1.2486 & 1.1390 & 0.6980 & 1.2500\\
+ & 3 & 1.0000 & 0.9995 & 0.9354 & 0.4305 & 0.1991 & 1.6667\\
+ & 4 & 0.0000 & 0.0000 & 0.0001 & 0.0102 & 0.0149 & 2.0000\\
+ & 5 & 0.0000 & 0.0000 & 0.0000 & 0.0001 & 0.0004 & 2.2727\\
+\addlinespace
+10 & 1 & 0.8182 & 0.8182 & 0.8187 & 0.8161 & -- & 0.8182\\
+ & 2 & 1.5000 & 1.5000 & 1.5005 & 1.4815 & -- & 1.5000\\
+ & 3 & 2.0769 & 2.0769 & 2.0763 & 2.0121 & -- & 2.0769\\
+ & 5 & 1.8000 & 1.7973 & 1.4608 & 0.2206 & -- & 3.0000\\
+\addlinespace
+40 & 1 & 0.9512 & 0.9512 & 0.9515 & 0.9527 & -- & 0.9512\\
+ & 2 & 1.8571 & 1.8571 & 1.8578 & 1.8609 & -- & 1.8571\\
+ & 3 & 2.7209 & 2.7209 & 2.7221 & 2.7267 & -- & 2.7209\\
+ & 5 & 4.3333 & 4.3333 & 4.3355 & 4.3380 & -- & 4.3333\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\paragraph{Convergence audit.} Table~\ref{tab:audit} summarizes 180 runs of Algorithm~1 (15 random instances of each type, product and random initializations, line-search grids of 33 and 513 points), with every iteration recorded. All runs converged, decreased the objective monotonically and satisfied the sufficient-decrease inequality of Proposition~4(b) at every step. Changing the grid changed the stationary point reached in 24 of 90 paired runs, all from random initializations, with the finer grid better in 11; from the product initialization the final value never changed.
+
+\begin{table}[h]
+\caption{Convergence audit of Algorithm~1: median [maximum] iterations, median shares of negative-curvature steps and of accepted refined steps, median residual $\|\nabla J_\varepsilon\|_\infty$ at termination, median time.}\label{tab:audit}
+\centering\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Instance type & runs & iterations & neg.\ curvature & refined accepted & residual & time (s)\\
+\midrule
+different node sets & 60 & 23 [80] & 0.93 & 1.00 & $1.5\times10^{-6}$ & 0.010\\
+same-node directed & 60 & 27 [128] & 0.94 & 0.93 & $1.6\times10^{-6}$ & 0.022\\
+same-node masked & 60 & 31 [76] & 0.96 & 0.94 & $1.4\times10^{-6}$ & 0.022\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\paragraph{Portfolio diagnostics.} Table~\ref{tab:ms} reports, for twelve comparisons between networks with 8 and 6 nodes, the portfolio estimate, the estimate after adding 20 random initializations, the number of distinct stationary values among the 24 candidates, and the number of changes of the selected candidate under five perturbations of the geometry by relative noise $10^{-6}$.
+
+\begin{table}[h]
+\caption{Multi-start diagnostics for difficult cross-network comparisons.}\label{tab:ms}
+\centering\footnotesize
+\begin{tabular}{rlrlrrr}
+\toprule
+pair & winner (portfolio) & value & winner (+20 random) & rel.\ improvement & distinct values & switches\\
+\midrule
+0 & feature & 0.7269 & feature & 0.0000 & 6 & 0\\
+1 & anneal & 0.6912 & anneal & 0.0000 & 13 & 0\\
+2 & product & 0.9334 & random15 & 0.0000 & 5 & 0\\
+3 & anneal & 0.5565 & random9 & 0.0000 & 9 & 0\\
+4 & anneal & 0.7229 & random19 & 0.0028 & 9 & 0\\
+5 & anneal & 0.6342 & random13 & 0.0252 & 7 & 0\\
+6 & feature & 0.8347 & random13 & 0.0594 & 5 & 0\\
+7 & anneal & 0.5546 & random13 & 0.0000 & 12 & 0\\
+8 & anneal & 0.7338 & random18 & 0.0000 & 7 & 0\\
+9 & product & 0.8790 & random16 & 0.0000 & 10 & 0\\
+10 & anneal & 0.4509 & random14 & 0.0000 & 14 & 0\\
+11 & product & 0.6476 & random14 & 0.0000 & 2 & 0\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\paragraph{Benchmarks.} Table~\ref{tab:bench} breaks down the run time of Algorithm~1 for masked problems (median of three runs), and Table~\ref{tab:pot} compares it with POT on balanced, fully observed directed problems with $\alpha=0.5$ (median of three instances); ``energy excess'' is the relative excess of the balanced fused GW energy of the returned coupling over that of POT's conditional gradient solution.
+
+\begin{table}[h]
+\caption{Run time of Algorithm~1 by component (masked problems, $\alpha=0.5$, $\gamma=1$, $\varepsilon=0.05$).}\label{tab:bench}
+\centering\small
+\begin{tabular}{rrrrrrr}
+\toprule
+$N$ & iterations & s/iteration & oracle & structural & line search & 3-start portfolio (s)\\
+\midrule
+25 & 12 & 0.0023 & 71\% & 3\% & 19\% & 0.08\\
+50 & 8 & 0.0083 & 78\% & 3\% & 18\% & 0.22\\
+100 & 6 & 0.0347 & 83\% & 4\% & 12\% & 0.68\\
+200 & 5 & 0.1482 & 81\% & 7\% & 12\% & 2.29\\
+400 & 4 & 0.6220 & 82\% & 11\% & 9\% & 9.02\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\begin{table}[h]
+\caption{Comparison with POT on balanced, fully observed directed problems.}\label{tab:pot}
+\centering\small
+\begin{tabular}{rlrrr}
+\toprule
+$N$ & method & time (s) & energy excess & marginal error\\
+\midrule
+25 & POT CG (exact OT oracle) & 0.001 & 0 & 0\\
+ & POT entropic ($\varepsilon=0.01$) & 0.497 & $6.5\times10^{-4}$ & $7.4\times10^{-5}$\\
+ & Algorithm~1 ($\gamma=10^3$, $\varepsilon=0.01$) & 4.311 & $1.3\times10^{-4}$ & $4.6\times10^{-6}$\\
+50 & POT CG (exact OT oracle) & 0.002 & 0 & 0\\
+ & POT entropic ($\varepsilon=0.01$) & 0.405 & $6.4\times10^{-3}$ & $2.5\times10^{-5}$\\
+ & Algorithm~1 ($\gamma=10^3$, $\varepsilon=0.01$) & 10.752 & $5.7\times10^{-3}$ & $2.8\times10^{-6}$\\
+100 & POT CG (exact OT oracle) & 0.007 & 0 & 0\\
+ & POT entropic ($\varepsilon=0.01$) & 0.730 & $1.6\times10^{-2}$ & $2.1\times10^{-5}$\\
+ & Algorithm~1 ($\gamma=10^3$, $\varepsilon=0.01$) & 53.614 & $1.6\times10^{-2}$ & $2.0\times10^{-6}$\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Simulation designs and additional results}\label{sec:simdesign}
+
+\paragraph{Base networks.} Latent positions $x_i\sim N_2(0,I)$ give $S_{ik}=\|x_i-x_k\|+2$; direction effects $u_i\sim N(0,1)$ give $A_{ik}=\kappa(u_i-u_k)$, $\kappa=0.5$; $C^0=S+A$ with zero diagonal; masses are log-normal with log-scale standard deviation $1$, normalized to total one; attributes are $f_i\sim N(0,1)$. Observed states add $N(0,\sigma^2)$ noise to every off-diagonal relation (truncated at zero), $N(0,0.05^2)$ to attributes and a log-normal perturbation with standard deviation $0.02$ to masses.
+
+\paragraph{Detection.} $n=12$, periods $1,\dots,8$, $\sigma=0.25$, shock in period 5 on the four heaviest nodes $\mathcal H$. Reversal: $c_{ik}=S_{ik}+(1-2\delta)A_{ik}$ on corridors within $\mathcal H$. Corridor surge: $c_{ik}=(1+\delta)C^0_{ik}$ on the same corridors. Attribute shift: $f_i+2\delta$ for $i\in\mathcal H$. Mass contraction: $\mu_i(1-\delta/2)$ for $i\in\mathcal H$. The UFGW-based methods use the identity initialization when identities persist and the attribute and product initializations under relabeling. Variants change one factor at a time: $n=24$ (still four shocked nodes), $\sigma=0.4$, $\kappa=1$, log-mass standard deviation $0.5$, or an independent uniform relabeling of the nodes in every period. Table~\ref{tab:det} reports the base design with Wilson 95\% intervals.
+
+\begin{table}[h]
+\caption{Detection rates in the base design with Wilson 95\% intervals (60 replications).}\label{tab:det}
+\centering\tiny
+\begin{tabular}{llccccccc}
+\toprule
+Scenario & $\delta$ & directed & symm. & $\alpha{=}0$ & w.\,Frob. & Frob. & summ. & spectr.\\
+\midrule
+no shock & 0 & 0.20 {\tiny[0.12,0.32]} & 0.12 {\tiny[0.06,0.22]} & 0.08 {\tiny[0.04,0.18]} & 0.20 {\tiny[0.12,0.32]} & 0.22 {\tiny[0.13,0.34]} & 0.13 {\tiny[0.07,0.24]} & 0.22 {\tiny[0.13,0.34]}\\
+reversal & 0.25 & 0.67 {\tiny[0.54,0.77]} & 0.08 {\tiny[0.04,0.18]} & 0.20 {\tiny[0.12,0.32]} & 0.65 {\tiny[0.52,0.76]} & 0.52 {\tiny[0.39,0.64]} & 0.37 {\tiny[0.26,0.49]} & 0.13 {\tiny[0.07,0.24]}\\
+ & 0.5 & 0.92 {\tiny[0.82,0.96]} & 0.08 {\tiny[0.04,0.18]} & 0.10 {\tiny[0.05,0.20]} & 0.92 {\tiny[0.82,0.96]} & 0.78 {\tiny[0.66,0.87]} & 0.37 {\tiny[0.26,0.49]} & 0.25 {\tiny[0.16,0.37]}\\
+ & 1 & 1.00 {\tiny[0.94,1.00]} & 0.13 {\tiny[0.07,0.24]} & 0.12 {\tiny[0.06,0.22]} & 1.00 {\tiny[0.94,1.00]} & 0.95 {\tiny[0.86,0.98]} & 0.15 {\tiny[0.08,0.26]} & 0.65 {\tiny[0.52,0.76]}\\
+corridor surge & 0.025 & 0.17 {\tiny[0.09,0.28]} & 0.20 {\tiny[0.12,0.32]} & 0.17 {\tiny[0.09,0.28]} & 0.18 {\tiny[0.11,0.30]} & 0.15 {\tiny[0.08,0.26]} & 0.12 {\tiny[0.06,0.22]} & 0.13 {\tiny[0.07,0.24]}\\
+ & 0.05 & 0.32 {\tiny[0.21,0.44]} & 0.38 {\tiny[0.27,0.51]} & 0.08 {\tiny[0.04,0.18]} & 0.30 {\tiny[0.20,0.43]} & 0.17 {\tiny[0.09,0.28]} & 0.27 {\tiny[0.17,0.39]} & 0.30 {\tiny[0.20,0.43]}\\
+ & 0.1 & 0.85 {\tiny[0.74,0.92]} & 0.97 {\tiny[0.89,0.99]} & 0.15 {\tiny[0.08,0.26]} & 0.85 {\tiny[0.74,0.92]} & 0.47 {\tiny[0.35,0.59]} & 0.57 {\tiny[0.44,0.68]} & 0.58 {\tiny[0.46,0.70]}\\
+connectivity & 0.05 & 0.23 {\tiny[0.14,0.35]} & 0.28 {\tiny[0.19,0.41]} & 0.82 {\tiny[0.70,0.89]} & 0.23 {\tiny[0.14,0.35]} & 0.08 {\tiny[0.04,0.18]} & 0.42 {\tiny[0.30,0.54]} & 0.05 {\tiny[0.02,0.14]}\\
+ & 0.1 & 0.77 {\tiny[0.65,0.86]} & 0.82 {\tiny[0.70,0.89]} & 1.00 {\tiny[0.94,1.00]} & 0.75 {\tiny[0.63,0.84]} & 0.28 {\tiny[0.19,0.41]} & 0.60 {\tiny[0.47,0.71]} & 0.18 {\tiny[0.11,0.30]}\\
+ & 0.2 & 1.00 {\tiny[0.94,1.00]} & 1.00 {\tiny[0.94,1.00]} & 1.00 {\tiny[0.94,1.00]} & 1.00 {\tiny[0.94,1.00]} & 0.67 {\tiny[0.54,0.77]} & 0.67 {\tiny[0.54,0.77]} & 0.18 {\tiny[0.11,0.30]}\\
+mass contraction & 0.25 & 0.10 {\tiny[0.05,0.20]} & 0.12 {\tiny[0.06,0.22]} & 0.50 {\tiny[0.38,0.62]} & 0.17 {\tiny[0.09,0.28]} & 0.23 {\tiny[0.14,0.35]} & 0.98 {\tiny[0.91,1.00]} & 0.92 {\tiny[0.82,0.96]}\\
+ & 0.5 & 0.20 {\tiny[0.12,0.32]} & 0.57 {\tiny[0.44,0.68]} & 1.00 {\tiny[0.94,1.00]} & 0.78 {\tiny[0.66,0.87]} & 0.83 {\tiny[0.72,0.91]} & 1.00 {\tiny[0.94,1.00]} & 1.00 {\tiny[0.94,1.00]}\\
+ & 1 & 1.00 {\tiny[0.94,1.00]} & 1.00 {\tiny[0.94,1.00]} & 1.00 {\tiny[0.94,1.00]} & 1.00 {\tiny[0.94,1.00]} & 1.00 {\tiny[0.94,1.00]} & 1.00 {\tiny[0.94,1.00]} & 1.00 {\tiny[0.94,1.00]}\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\paragraph{Lead--lag.} A network with $n=10$ is drawn; with $w=\max(1,T/6)$ and $c=(T-1)/2-\ell/2$, the first trajectory follows the pulse $p(t)=\exp\{-(t-c)^2/(2w^2)\}$ and the second, an independent noisy realization of the same network, the pulse centred at $c+\ell$. Level scenario: $C_t=C^0\{1+p(t)\}$, $\mu_t=\mu\{1-0.2p(t)\}$, $f_t=f-0.5p(t)$. Spread scenario: $C_t=\bar c+\{1+0.8p(t)\}(C^0-\bar c)$, with $\bar c$ the mass-weighted mean of $C^0$. Noise $\sigma=0.25$; 24 replications per cell; identity initialization. Table~\ref{tab:ll} reports the results for $\beta$ equal to one tenth of the median of the level-adjusted matrix, and Figure~\ref{fig:beta} the sensitivity to $\beta$.
+
+\begin{table}[h]
+\caption{Lead--lag estimation: mean index, mean boundary-corrected lead, its root mean squared error, and the share of replications with $\hat\tau>0$ (24 replications). $^\ast$: $2\ell\ge T$.}\label{tab:ll}
+\centering\footnotesize
+\begin{tabular}{lrrrrrr}
+\toprule
+Shock & $T$ & $\ell$ & mean $\hat\tau$ & mean $\hat\ell$ & RMSE $\hat\ell$ & sign correct\\
+\midrule
+level & 6 & 0 & 0.00 & 0.00 & 0.02 & --\\
+ &  & 1 & 0.71 & 1.00 & 0.00 & 1.00\\
+ &  & 2 & 1.31 & 2.12 & 0.13 & 1.00\\
+ &  & 3$^\ast$ & 1.66 & 2.99 & 0.03 & 1.00\\
+ &  & 4$^\ast$ & -0.34 & -0.45 & 4.45 & 0.00\\
+\addlinespace
+ & 10 & 0 & -0.00 & -0.00 & 0.02 & --\\
+ &  & 1 & 0.81 & 0.99 & 0.01 & 1.00\\
+ &  & 2 & 1.52 & 2.04 & 0.04 & 1.00\\
+ &  & 3 & 2.09 & 3.03 & 0.03 & 1.00\\
+ &  & 4 & 2.63 & 4.13 & 0.13 & 1.00\\
+\addlinespace
+ & 16 & 0 & -0.00 & -0.00 & 0.03 & --\\
+ &  & 1 & 0.84 & 0.95 & 0.05 & 1.00\\
+ &  & 2 & 1.65 & 1.97 & 0.05 & 1.00\\
+ &  & 3 & 2.40 & 3.05 & 0.05 & 1.00\\
+ &  & 4 & 3.06 & 4.10 & 0.10 & 1.00\\
+\addlinespace
+spread & 6 & 0 & -0.00 & -0.00 & 0.04 & --\\
+ &  & 1 & 0.71 & 0.99 & 0.03 & 1.00\\
+ &  & 2 & 1.26 & 2.02 & 0.15 & 1.00\\
+ &  & 3$^\ast$ & 1.65 & 2.95 & 0.13 & 1.00\\
+ &  & 4$^\ast$ & -0.34 & -0.47 & 4.50 & 0.04\\
+\addlinespace
+ & 10 & 0 & -0.00 & -0.00 & 0.09 & --\\
+ &  & 1 & 0.73 & 0.88 & 0.23 & 1.00\\
+ &  & 2 & 1.43 & 1.90 & 0.21 & 1.00\\
+ &  & 3 & 2.08 & 3.00 & 0.11 & 1.00\\
+ &  & 4 & 2.56 & 3.97 & 0.16 & 1.00\\
+\addlinespace
+ & 16 & 0 & 0.07 & 0.08 & 0.21 & --\\
+ &  & 1 & 0.76 & 0.86 & 0.33 & 1.00\\
+ &  & 2 & 1.51 & 1.80 & 0.35 & 1.00\\
+ &  & 3 & 2.23 & 2.80 & 0.29 & 1.00\\
+ &  & 4 & 2.92 & 3.88 & 0.28 & 1.00\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/figS4_beta.pdf}
+\caption{Mean lead--lag index as a function of $\beta$ ($T=10$).}\label{fig:beta}
+\end{figure}
+
+\paragraph{Missing edges.} $n=20$, $T=6$; $C_t=C^0+tB+0.25Z_t$ with $B$ having $N(0,0.15^2)$ entries. Designs: missing completely at random at rates 5\%, 15\%, 30\%, 45\%; asymmetric (probability 0.35 for pairs $i<j$ and 0.05 for $i>j$); cost-dependent (probability $0.5/[1+\exp\{-3(c_{ik}-q_{0.75})\}]$); node-dependent (probability 0.5 for relations from the five lightest nodes, 0.05 otherwise); structured (two destinations never observed, peripheral origins and costly relations more often missing). Thirty replications per design; identity initialization. Figure~\ref{fig:mis} shows means and standard deviations.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/figS1_missing.pdf}
+\caption{Relative error of the discrepancy matrix and Spearman correlation with the full-data matrix (mean $\pm$ standard deviation over 30 replications).}\label{fig:mis}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Data and preprocessing}\label{sec:data}
+
+\paragraph{Sources.} Three UNCTADstat datasets for 2016--2021, retrieved through the UNCTADstat API: transport costs of international trade (\texttt{US.TransportCosts}), filtered to transport mode \texttt{00} (all modes) and product \texttt{TOTAL}; the liner shipping connectivity index (\texttt{US.LSCI}), averaged over quarters within each year; and container port throughput (\texttt{US.ContPortThroughput}) in TEU. The exact extracts used for all results are included in the archive. Because the cost data cover all modes, the geometry is not restricted to maritime transport. Retrieval dates and the index base of the LSCI should be recorded from the retrieval logs.
+
+\paragraph{Harmonization, coverage and exclusions.} Economy labels were harmonized with the map \{Korea, Republic of $\to$ Republic of Korea; Tanzania, United Republic of $\to$ United Republic of Tanzania; Congo, Dem.\ Rep.\ of the $\to$ Dem.\ Rep.\ of the Congo\}. The intersection of the three files then contains 94 economies. The United States, the United Kingdom and France are absent from the transport-cost file, although they are present in the other two; they are therefore not part of the intersection. Eight economies with incomplete throughput (Algeria, Dem.\ Rep.\ of the Congo, French Polynesia, Guinea, Iran, Libya, Montenegro, Mozambique) were excluded, leaving 86. Of the $86\times85=7{,}310$ directed pairs, 6{,}165 are observed in all six years and about 89\% in any year. Coverage is directed: Mexico and Venezuela never appear as destinations, so their incoming costs never enter the comparison, while their outgoing costs do. One non-positive cost is treated as missing.
+
+\paragraph{Preprocessing.} Masses $\mu_{t,i}=\sqrt{\mathrm{TEU}_{t,i}}/\kappa$ with $\kappa=T^{-1}\sum_t\sum_i\sqrt{\mathrm{TEU}_{t,i}}$; attributes $f_{t,i}=(\log\mathrm{LSCI}_{t,i}-m)/s$ with pooled mean and standard deviation; geometry $c_{t,ij}=\min\{\max\{\log(1+\mathrm{cost}_{t,ij}),q_{0.005}\},q_{0.995}\}/s_c$ with pooled quantiles and the pooled standard deviation $s_c$ of the winsorized values; $c_{t,ii}=0$; masks $w_{t,ij}=1$ for observed pairs and $w_{t,ii}=1$.
+
+\paragraph{Directional asymmetry.} For pairs observed in both directions, the table reports the mean of $|\log(r_{ij}/r_{ji})|$; its exponential, about $3.9$, is the geometric mean of the ratio between the larger and the smaller directional cost, which is smaller than the arithmetic mean of that ratio.
+
+\begin{table}[h]
+\caption{Descriptive statistics of the 86-economy panel. $^\ast$Median over the 6{,}165 pairs observed in all years. The last two columns use pairs observed in both directions.}\label{tab:desc}
+\centering\footnotesize
+\begin{tabular}{lrrrrrr}
+\toprule
+Year & observed & median USD/kg$^\ast$ & TEU (m) & mean log LSCI & mean $|\log(r_{ij}/r_{ji})|$ & corr$(\log r_{ij},\log r_{ji})$\\
+\midrule
+2016 & 0.890 & 0.195 & 583.6 & 4.599 & 1.43 & 0.16\\
+2017 & 0.887 & 0.153 & 622.4 & 4.576 & 1.35 & 0.18\\
+2018 & 0.894 & 0.151 & 654.3 & 4.586 & 1.33 & 0.17\\
+2019 & 0.891 & 0.154 & 673.1 & 4.572 & 1.32 & 0.16\\
+2020 & 0.889 & 0.161 & 670.4 & 4.564 & 1.36 & 0.16\\
+2021 & 0.896 & 0.192 & 714.7 & 4.563 & 1.31 & 0.19\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\paragraph{An earlier preprocessing.} An earlier version of this analysis set missing throughput to zero, which makes the mass of an economy collapse in the years in which it is not reported, imputed every missing cost by the maximum of its row, and used min--max scaling of $\log(1+\cdot)$ transforms. Under that preprocessing the imputed cells, about 13\% of the entries, account for 82\%--86\% of the squared Frobenius norm of every geometry matrix, and the destination columns of Mexico and Venezuela are imputed entirely. The last row of Table~4 of the main text shows that, even then, the corrected solver does not single out 2020.
+
+\paragraph{Regions.} East Asia and Pacific (7): China, China Hong Kong SAR, Japan, Republic of Korea, Australia, New Zealand, Samoa. South and South-East Asia (9): Cambodia, India, Indonesia, Malaysia, Pakistan, Philippines, Singapore, Thailand, Viet Nam. Europe (25): Albania, Belgium, Bulgaria, Croatia, Cyprus, Denmark, Estonia, Finland, Germany, Greece, Iceland, Ireland, Italy, Latvia, Lithuania, Malta, Netherlands, Poland, Portugal, Romania, Russian Federation, Slovenia, Spain, Sweden, Ukraine. Middle East and North Africa (13): Egypt, Israel, Jordan, Lebanon, Morocco, Oman, Qatar, Saudi Arabia, Sudan, Tunisia, T\"urkiye, United Arab Emirates, Yemen. Sub-Saharan Africa (11): Angola, Cameroon, C\^ote d'Ivoire, Ghana, Kenya, Mauritius, Namibia, Nigeria, Senegal, Togo, United Republic of Tanzania. Latin America and Caribbean (21): Argentina, Aruba, Brazil, Colombia, Dominican Republic, Ecuador, Grenada, Guatemala, Guyana, Honduras, Jamaica, Mexico, Nicaragua, Panama, Peru, Saint Lucia, Saint Vincent and the Grenadines, Suriname, Trinidad and Tobago, Uruguay, Venezuela.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Additional empirical results}\label{sec:addemp}
+
+Table~\ref{tab:mds} reports the spectrum of $-\frac12J\Delta J$ and the quality of the two-dimensional maps along the $\alpha$ path; no negative eigenvalues occur, so on these six states each $\Delta$ is a squared Euclidean distance matrix, but for $\alpha\ge0.5$ two dimensions display only about half of the spectrum. Figure~\ref{fig:alpha} shows the anomaly scores along the $\alpha$ path; the ordering of the years is the same for all $\alpha>0$. Figure~\ref{fig:reg} displays the regional lead--lag indices of Table~5 of the main text, and Table~\ref{tab:cor} and Figure~\ref{fig:cor} the corridors with the largest first-order contributions to $\Delta(G_{2020},G_{2021})$. For the regional comparisons, adding ten random initializations to the portfolio in each of the 540 cells improved no value, and the indices were unchanged; the smallest eigenvalues of the Gram matrices of $k_\beta$ over the twelve states of each pair ranged from 0.027 to 0.77 and those of $k_\beta/(1+k_\beta)$ from 0.005 to 0.31.
+
+\begin{table}[h]
+\caption{Classical scaling diagnostics: leading eigenvalues of $-\frac12J\Delta J$, share of the positive spectrum displayed by two dimensions, share of negative eigenvalues, and Kruskal stress of the two-dimensional embedding of $\Delta^{1/2}$.}\label{tab:mds}
+\centering\footnotesize
+\begin{tabular}{rlccc}
+\toprule
+$\alpha$ & eigenvalues of $-\frac12J\Delta J$ & first two / positive & negative / total & stress\\
+\midrule
+0.00 & 0.005, 0.001, 0.000, 0.000, 0.000 & 0.88 & 0.00 & 0.12\\
+0.25 & 0.043, 0.031, 0.021, 0.018, 0.015 & 0.58 & 0.00 & 0.36\\
+0.50 & 0.086, 0.065, 0.048, 0.041, 0.034 & 0.55 & 0.00 & 0.37\\
+0.75 & 0.114, 0.091, 0.068, 0.059, 0.049 & 0.54 & 0.00 & 0.37\\
+1.00 & 0.124, 0.103, 0.080, 0.071, 0.059 & 0.52 & 0.00 & 0.40\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/figS2_alpha_path.pdf}
+\caption{Anomaly and trend-adjusted scores, relative to the mean anomaly, along the $\alpha$ path.}\label{fig:alpha}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/fig6_regional.pdf}
+\caption{Level-adjusted regional lead--lag indices $\hat\tau(a,b)$ (row region $a$ precedes column region $b$ when positive), from directed and from symmetrized geometries.}\label{fig:reg}
+\end{figure}
+
+\begin{table}[h]
+\caption{Corridors with the largest first-order contributions to $\Delta(G_{2020},G_{2021})$; $\Delta c_{ij}$ is the change of the standardized log cost.}\label{tab:cor}
+\centering\footnotesize
+\begin{tabular}{llrrr}
+\toprule
+Origin & Destination & $\partial\Delta/\partial c_{ij}$ & $\Delta c_{ij}$ & contribution\\
+\midrule
+Malta & China, Hong Kong SAR & $9.1\times10^{-4}$ & +5.73 & $5.2\times10^{-3}$\\
+Morocco & Cambodia & $3.6\times10^{-4}$ & +4.99 & $1.8\times10^{-3}$\\
+Yemen & Brazil & $3.4\times10^{-4}$ & +5.23 & $1.8\times10^{-3}$\\
+Cote d'Ivoire & Jamaica & $2.3\times10^{-4}$ & +6.06 & $1.4\times10^{-3}$\\
+Panama & Oman & $-4.7\times10^{-4}$ & -2.98 & $1.4\times10^{-3}$\\
+Panama & Lithuania & $2.2\times10^{-4}$ & +5.97 & $1.3\times10^{-3}$\\
+Jamaica & China, Hong Kong SAR & $4.4\times10^{-4}$ & +3.01 & $1.3\times10^{-3}$\\
+Dominican Republic & Nigeria & $2.2\times10^{-4}$ & +5.85 & $1.3\times10^{-3}$\\
+China, Hong Kong SAR & Egypt & $6.7\times10^{-4}$ & +1.89 & $1.3\times10^{-3}$\\
+Colombia & Malta & $3.1\times10^{-4}$ & +3.57 & $1.1\times10^{-3}$\\
+Viet Nam & Panama & $-6.5\times10^{-4}$ & -1.69 & $1.1\times10^{-3}$\\
+Lebanon & Panama & $2.7\times10^{-4}$ & +3.94 & $1.1\times10^{-3}$\\
+\bottomrule
+\end{tabular}
+
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{figures/figS3_corridors.pdf}
+\caption{First-order corridor contributions to the 2020--2021 discrepancy.}\label{fig:cor}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Reproducibility}\label{sec:repro}
+
+The archive (version 1.1.0) contains the package \texttt{gsta/} (\texttt{ufgw.py}: Algorithm~1 with masks, safeguarded step, audit logging, residuals, portfolio and envelope gradients; \texttt{softdtw.py}: soft-DTW, gradients, Delannoy numbers, lead--lag index and boundary correction; \texttt{core.py}: trajectory-level quantities; \texttt{data.py}: construction of the panel; \texttt{sim.py}: simulation designs), the automated tests \texttt{tests/test\_identities.py} (factorization and adjoint gradient against the explicit tensor, Proposition~2, stationarity, envelope gradient against re-solved differences, symmetry of the portfolio estimate, soft-DTW against enumeration, antisymmetry, pathwise bound, idealized shift, and zero G-STA between a trajectory and its copy), the experiment scripts, \texttt{make\_tables.py} and \texttt{figures/make\_figures.py}, which write every table and figure from the stored results, the processed data extracts, the retrieval scripts (credentials are read from environment variables), \texttt{requirements.txt} with the tested versions, and \texttt{scripts/run\_all.sh}, which runs the tests and reproduces all results with one command in about 1.5 hours on one core. All scripts use fixed seeds and are resumable. The sensitivity analysis adds \texttt{gsta\_sensitivity.py} (Propositions~11--14, influence measures, budgeted perturbations, scaled-Hessian certificate), soft-DTW Hessian--vector products in \texttt{softdtw.py}, \texttt{verify\_sensitivity.py} (Section~\ref{sec:sensverif}), \texttt{policy\_experiment.py}, whose stages reproduce Section~6.5 of the main text, and \texttt{make\_outputs.py}, which writes its tables and figures.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Sensitivity analysis}\label{sec:sens}
+
+\subsection{Proofs}
+
+\paragraph{Proof of Proposition~11.}
+(a) Under a regular selection the portfolio estimate coincides near the inputs with one branch value and is continuously differentiable with the gradient of Proposition~6 (proof of Proposition~6). The map $x\mapsto\widehat V_\varepsilon(G(x),G(x))$ composes $\widehat V_\varepsilon$ with the diagonal embedding, so its derivative is $\partial_{1,x}+\partial_{2,x}$; $\widehat V_\varepsilon(H,H)$ does not depend on $x$.
+(b) $J^{GG}_\varepsilon(P^\top)=J^{GG}_\varepsilon(P)$ (proof of Proposition~1(b)). The identity, product and attribute starts are symmetric when $G=H$. If $P$ is symmetric, so is $\nabla f(P)=(1-\alpha)M+\alpha\{T(P)+T^\ast(P)\}$: $M$ is symmetric, and renaming $(k,l)\to(l,k)$ in $T(P)_{ji}=\sum_{kl}w_{jk}w_{il}(c_{jk}-c_{il})^2p_{kl}$ gives $T(P)_{ij}$, and likewise for $T^\ast$. The oracle problem with a symmetric cost and equal marginals is invariant under transposition and strictly convex, so its minimizer is symmetric, and the step is a scalar. Every iterate is therefore symmetric, and so is $S$. Substituting $S=S^\top$, $D=C$, $W'=W$ and $G=F$ in the formulas of Proposition~6 shows that $\partial_2\widehat V_\varepsilon(G,G)=\partial_1\widehat V_\varepsilon(G,G)$. Subtracting $\partial_1\widehat V_\varepsilon(G,G)$ from $\partial_1\widehat V_\varepsilon(G,H)$ gives the displayed formulas.
+(c) When $H$ is a copy of $G$, the deterministic portfolio solves identical problems for $(G,H)$ and $(G,G)$, so $P=S$ and $r=r_S$, and the three expressions in (b) vanish. The raw gradient $\partial_{1,\mu}\widehat V_\varepsilon(G,G)=\gamma(\mathbf 1-r_S/\mu)$ vanishes only if $r_S=\mu$. For a single node, the optimality condition $2\gamma\log(p/\mu)+\varepsilon\log p=0$ gives $p=\mu^{2\gamma/(2\gamma+\varepsilon)}\neq\mu$ unless $\mu=1$. Relations with $w_{ik}=0$ enter neither problem, so their derivatives are zero (Corollary~1). \qed
+
+\paragraph{Proof of Proposition~12.}
+(a) $a(t)$ is linear in the entries $\Delta_{tu}$, and $\Delta_{ut}=\Delta_{tu}$ because the portfolio estimate is symmetric. (b) $\mathcal A_\beta$ is smooth with gradient $E$ (Proposition~7(c)). In $\Delta^{\mathcal{GH}}$ only row $t$ depends on $x$. In $\Delta^{\mathcal{GG}}$ only row $t$ and column $t$ depend on $x$, except the entry $(t,t)$, which is identically zero. $\Delta^{\mathcal{GG}}$ is symmetric, hence so is $E^{\mathcal{GG}}$ (Proposition~7(d)), so the contributions of row and column $t$ are equal and their sum cancels the factor $\frac12$. (c) If $\mathcal H$ is a copy, then $\Delta^{\mathcal{GH}}=\Delta^{\mathcal{GG}}$ and $E^{\mathcal{GH}}=E^{\mathcal{GG}}$. For $s\neq t$ the problems $(G_t,H_s)$ and $(G_t,G_s)$ coincide, and $\nabla_x\Delta^{\mathcal{GH}}_{tt}=0$ by Proposition~11(c), so the two sums cancel. For the temperature term, $\partial\mathcal A_\beta/\partial\beta=-\log\mathcal Z-\mathbb E_\beta\langle A,\Delta\rangle/\beta=\{\mathcal A_\beta-\langle E,\Delta\rangle\}/\beta$, where $\mathcal Z$ is the partition function; since $H(p_\beta)=\mathbb E_\beta\langle A,\Delta\rangle/\beta+\log\mathcal Z$, this equals $-H(p_\beta)$. \qed
+
+\paragraph{Proof of Proposition~13.}
+(a) $\mathcal A_\beta$ is a log-sum-exp of linear functions, so it is infinitely differentiable, and $Z\ge\max(T,S)>0$. Differentiating the Gibbs expectation gives $\partial\mathbb E_\beta A_{ts}/\partial\Delta_{uv}=-\beta^{-1}\operatorname{Cov}_\beta(A_{ts},A_{uv})$. From $\tau=\langle O,E\rangle/Z$ we get $d\tau=\langle O-\tau\mathbf 1\mathbf 1^\top,dE\rangle/Z=-(\beta Z)^{-1}\operatorname{Cov}_\beta(Y,\langle A,d\Delta\rangle)$. The bound follows from the Cauchy--Schwarz inequality and $\operatorname{Var}(A_{ts})\le\frac14$.
+(b) Under the uniqueness conditions, near $\Delta$ the minimum is $\Delta_{k^\star}$ and the median of $\tilde\Delta$ is the fixed linear function $\langle\bar e_{\mathrm{med}},\tilde\Delta\rangle$. Write $\hat\tau(\Delta)=\tau_1(\tilde\Delta/\beta)$, with $\tau_1$ the index at unit temperature. The partial derivative with respect to $\beta$ at fixed $\tilde\Delta$ is $-\langle g,\tilde\Delta\rangle/\beta$, and $\partial\beta/\partial\Delta=b(\bar e_{\mathrm{med}}-e_{k^\star})$ with $b/\beta=1/\operatorname{med}(\tilde\Delta)$; $\partial\tilde\Delta/\partial\Delta$ subtracts the derivative at $k^\star$. Collecting terms gives the formula. The adjusted matrix and the temperature are unchanged by $\Delta\mapsto\Delta+\kappa\mathbf 1\mathbf 1^\top$, and both scale with $c$ under $\Delta\mapsto c\Delta$; differentiating $\hat\tau(\Delta+\kappa\mathbf 1\mathbf 1^\top)=\hat\tau(c\Delta)=\hat\tau(\Delta)$ at $\kappa=0$ and $c=1$ gives the two orthogonality relations. The minimum and the median are invariant under transposition, so Proposition~10(a) gives $\hat\tau(\Delta^\top)=-\hat\tau(\Delta)$; differentiating gives $\nabla\hat\tau(\Delta^\top)=-\nabla\hat\tau(\Delta)^\top$.
+(c) This follows from the chain rule, because only row $t$ of $\Delta^{\mathcal{GH}}$ depends on $x$. \qed
+
+\paragraph{Proof of Proposition~14.}
+(a) $V_\varepsilon(G+\delta,H)\le J_\varepsilon(P;G+\delta,H)$ because $V_\varepsilon$ is a minimum, and Algorithm~1 started at $P$ decreases the objective monotonically (Proposition~4(b)). For fixed $P$, $J_\varepsilon$ is separable in $C$, $F$ and $\mu$, and the entropic term does not depend on them. Expanding $(c_{ik}+\delta c_{ik}-d_{jl})^2$ gives the linear term $\langle\partial_CJ_\varepsilon,\delta C\rangle$ plus $\alpha\sum_{ik}w_{ik}\delta c_{ik}^2\sum_{jl}w'_{jl}p_{ij}p_{kl}$, and the inner sum is $(PW'P^\top)_{ik}$. Expanding $\|f_i+\delta f_i-g_j\|^2$ adds $(1-\alpha)\sum_ir_i\|\delta f_i\|^2$. Finally, $\KL(r|\mu+\delta\mu)-\KL(r|\mu)-\sum_i(1-r_i/\mu_i)\delta\mu_i=\sum_ir_i\{x_i-\log(1+x_i)\}\ge0$ with $x_i=\delta\mu_i/\mu_i$.
+(b) Along the segment each branch $P^\star(\theta_\lambda)$ is continuously differentiable by the implicit function theorem. Hence $\nabla v(\theta)=\partial_\theta J_\varepsilon(P^\star(\theta),\theta)$ is continuously differentiable and $v$ is twice continuously differentiable. $\mathcal S$ is a twice continuously differentiable function of finitely many branch values (linear combinations, soft-DTW, and $\hat\tau$ while its cells are fixed). The bound is Taylor's theorem with Lagrange remainder applied to $\lambda\mapsto\mathcal S(\theta_\lambda)$.
+(c) Replacing $u_k$ by $\pm\operatorname{sign}(\partial_k\mathcal S)v_k$ with $0\le v_k\le\bar u_k$ cannot decrease the objective. The problem becomes the continuous knapsack $\max\sum_k|\partial_k\mathcal S|v_k$ subject to $\sum_kq_kv_k\le B$, which the greedy rule by ratio solves. \qed
+
+\subsection{Computational details}
+
+Given the selected couplings, each state-level gradient costs a few matrix products; all anomaly gradients of the application take seconds, whereas finite differences would need two solves for each of $6\times7{,}310$ corridors. Hessian--vector products of soft-DTW are obtained by differentiating the forward recursion for $R$ and the backward recursion for $E$ in a direction $\dot\Delta$. The gradient of $\hat\tau$ uses $TS$ such products. Non-degeneracy is checked through the smallest eigenvalue of $\operatorname{diag}(P)^{1/2}\nabla^2_PJ_\varepsilon\operatorname{diag}(P)^{1/2}$, computed by Lanczos iterations with $\nabla_P^2J_\varepsilon[X]=\alpha\{T(X)+T^\ast(X)\}+\gamma(X\mathbf 1/r)\mathbf 1^\top+\gamma\mathbf 1(X^\top\mathbf 1/c)^\top+\varepsilon X/P$. The congruence preserves definiteness and removes the ill-conditioning caused by small coupling entries. Semi-elasticities use $\partial c_{ik}/\partial\log\mathrm{cost}_{ik}=\mathrm{cost}_{ik}/\{(1+\mathrm{cost}_{ik})s_c\}$ for unwinsorized costs and zero otherwise, $\partial f_i/\partial\log\mathrm{LSCI}_i=1/s_f$, and $\partial\mu_i/\partial\log\mathrm{TEU}_i=\mu_i/2$, with the pooled constants and $\kappa$ fixed. Baseline gradients use a gap tolerance of $10^{-12}$ and counterfactual re-solves $10^{-10}$. Every perturbed problem is solved with the portfolio and with Algorithm~1 started at the baseline coupling; a branch switch is recorded when the two values differ by more than $10^{-7}\max\{1,|J_\varepsilon|\}$. The cost-change benchmark of the counterfactuals moves, in order of the absolute observed change, each corridor towards its 2020 value without overshooting in (i) and away from its mean over the other years in (ii); it was not used in (iii), where the changes concern a whole trajectory.
+
+\subsection{Verification}\label{sec:sensverif}
+
+\begin{table}[h]
+\caption{Proposition~11 versus central differences re-solved with the full portfolio (tolerance $10^{-13}$, step $10^{-5}$); 8 coordinates per block and argument; relative error $\|\text{analytic}-\text{FD}\|_\infty/\|\text{FD}\|_\infty$, maximum over both arguments. $\lambda_{\min}$: smallest eigenvalue of the scaled Hessian. Derivatives with respect to unobserved relations were zero in every instance.}\label{tab:sensverif}
+\centering\footnotesize
+\begin{tabular}{lrrrrrrr}
+\toprule
+ & & & \multicolumn{3}{c}{Proposition~11} & \multicolumn{2}{c}{incorrect variants}\\
+\cmidrule(lr){4-6}\cmidrule(lr){7-8}
+Instance & gap & $\lambda_{\min}$ & $C$ & $F$ & $\mu$ & self-argument omitted & raw value\\
+\midrule
+directed & $2.2\times10^{-15}$ & 0.050 & $7.9\times10^{-8}$ & $6.1\times10^{-8}$ & $2.2\times10^{-7}$ & 0.18 & 0.37\\
+directed + 25\% missing & $5.2\times10^{-14}$ & 0.027 & $8.0\times10^{-7}$ & $4.6\times10^{-7}$ & $7.5\times10^{-6}$ & 0.25 & 0.49\\
+8 vs.\ 6 nodes, 20\% missing & $5.8\times10^{-14}$ & 0.050 & $1.1\times10^{-6}$ & $1.3\times10^{-6}$ & $8.3\times10^{-7}$ & 0.06 & 0.12\\
+near copy & $<10^{-15}$ & 0.050 & $8.7\times10^{-8}$ & $9.1\times10^{-5}$ & $6.7\times10^{-5}$ & 118 & 237\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In the near copy the feature gradients are of order $10^{-6}$ and the absolute errors at most $7.4\times10^{-11}$; the large relative errors of the incorrect variants arise because the correct gradient nearly vanishes there.
+
+\begin{table}[h]
+\caption{Propositions~12 and 13 on two simulated trajectories of five states (8 and 6 nodes, 15\% missing relations, common pulse with opposite timing; $\hat\tau=0.355$) versus re-solved central differences (tolerance $10^{-13}$, step $10^{-5}$), with respect to the inputs of the third state of the first trajectory. $a(1)$: anomaly score of another state. G-STA at fixed $\beta$; $\hat\tau$ with the level adjustment and the data-dependent temperature. All 25 cross cells had regular selections.}\label{tab:sensverif2}
+\centering\footnotesize
+\begin{tabular}{llrrr}
+\toprule
+Quantity & block & max.\ abs.\ error & rel.\ error & max.\ $|\mathrm{FD}|$\\
+\midrule
+$a(3)$ & $C$ & $1.6\times10^{-9}$ & $3.8\times10^{-7}$ & $4.3\times10^{-3}$\\
+ & $F$ & $5.7\times10^{-9}$ & $1.1\times10^{-7}$ & 0.050\\
+ & $\mu$ & $6.8\times10^{-7}$ & $1.5\times10^{-6}$ & 0.45\\
+$a(1)$ & $C$ & $4.6\times10^{-10}$ & $1.9\times10^{-7}$ & $2.4\times10^{-3}$\\
+ & $F$ & $1.9\times10^{-9}$ & $1.2\times10^{-7}$ & 0.016\\
+ & $\mu$ & $2.7\times10^{-8}$ & $2.0\times10^{-7}$ & 0.13\\
+$\widehat{\mathrm{GSTA}}$ & $C$ & $8.8\times10^{-10}$ & $3.0\times10^{-7}$ & $2.9\times10^{-3}$\\
+ & $F$ & $4.2\times10^{-8}$ & $8.9\times10^{-7}$ & 0.047\\
+ & $\mu$ & $3.6\times10^{-7}$ & $3.5\times10^{-7}$ & 1.01\\
+$\hat\tau$ & $C$ & $1.8\times10^{-8}$ & $5.3\times10^{-6}$ & $3.4\times10^{-3}$\\
+ & $F$ & $1.1\times10^{-7}$ & $8.9\times10^{-7}$ & 0.12\\
+ & $\mu$ & $3.2\times10^{-6}$ & $8.6\times10^{-6}$ & 0.37\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\caption{Gradients on the data versus central differences re-solved with the full portfolio (tolerance $10^{-12}$, step $10^{-4}$). Corridors: the largest gradients and randomly chosen ones. EAP--SSEA: inputs of the SSEA state of 2018.}\label{tab:sensfd}
+\centering\footnotesize
+\begin{tabular}{llrrrr}
+\toprule
+Quantity & block & coordinates & max.\ abs.\ error & rel.\ error & max.\ $|\mathrm{FD}|$\\
+\midrule
+$\Delta(G_{2021},G_{2020})$ & $C$ & 16 & $2.3\times10^{-9}$ & $2.4\times10^{-6}$ & $9.3\times10^{-4}$\\
+ & $F$ & 4 & $1.8\times10^{-9}$ & $8.8\times10^{-7}$ & $2.0\times10^{-3}$\\
+ & $\mu$ & 4 & $6.7\times10^{-6}$ & $1.5\times10^{-5}$ & 0.45\\
+$a(2020)$ & $C$ & 6 & $1.5\times10^{-9}$ & $1.4\times10^{-6}$ & $1.1\times10^{-3}$\\
+$\widehat{\mathrm{GSTA}}$(EAP,SSEA) & $C$ & 10 & $1.6\times10^{-9}$ & $7.7\times10^{-6}$ & $2.1\times10^{-4}$\\
+ & $F$ & 3 & $6.6\times10^{-9}$ & $4.3\times10^{-7}$ & 0.015\\
+ & $\mu$ & 3 & $2.7\times10^{-5}$ & $5.4\times10^{-5}$ & 0.50\\
+$\hat\tau$(EAP,SSEA) & $C$ & 10 & $3.2\times10^{-7}$ & $9.2\times10^{-6}$ & 0.035\\
+ & $F$ & 3 & $1.7\times10^{-6}$ & $4.2\times10^{-6}$ & 0.41\\
+ & $\mu$ & 3 & $8.9\times10^{-3}$ & $9.9\times10^{-4}$ & 9.0\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The larger error for the masses of $\hat\tau$ reflects the step, which is not small relative to the regional masses (of order $10^{-2}$), and the curvature of the index.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/figS6_branch.pdf}
+\caption{A branch crossing. $H_\lambda$ interpolates the geometry of a six-node network and of a copy in which two interchangeable nodes exchange their relations. (a) Values of the two stationary branches (followed by warm starts) and the portfolio estimate (identity, product and attribute starts and six random starts). (b) Directional derivatives along the path from Proposition~11 for each branch, and central differences of the portfolio estimate; at $\lambda=1/2$ the one-sided slopes are $+1.03$ and $-1.03$.}\label{fig:branch}
+\end{figure}
+
+\subsection{Additional empirical results}
+
+\begin{table}[h]
+\caption{Most influential economies for the anomaly score: total corridor influence $S_i$ on the log-cost scale, imbalance $B_i$, semi-elasticities with respect to log LSCI and log TEU, and mass $\mu_i$.}\label{tab:sensnodes}
+\centering\footnotesize
+\begin{tabular}{rlrrrrr}
+\toprule
+Year & economy & $S_i\times10^{3}$ & $B_i$ & $\partial a/\partial\log\mathrm{LSCI}_i$ & $\partial a/\partial\log\mathrm{TEU}_i$ & $\mu_i$\\
+\midrule
+2016 & China, Hong Kong SAR & 20.8 & $+0.00$ & $1.3\times10^{-3}$ & $4.6\times10^{-3}$ & 0.027\\
+ & China & 15.2 & $+0.32$ & $-9.5\times10^{-3}$ & $-2.5\times10^{-4}$ & 0.087\\
+ & Singapore & 13.4 & $-0.06$ & $-1.6\times10^{-3}$ & $2.4\times10^{-3}$ & 0.034\\
+ & Japan & 9.4 & $+0.27$ & $1.1\times10^{-3}$ & $9.1\times10^{-4}$ & 0.029\\
+ & Philippines & 8.9 & $+0.23$ & $1.6\times10^{-4}$ & $1.9\times10^{-3}$ & 0.017\\
+ & Malaysia & 8.9 & $+0.05$ & $5.5\times10^{-4}$ & $7\times10^{-5}$ & 0.030\\
+\addlinespace
+2020 & China, Hong Kong SAR & 11.4 & $+0.16$ & $-1.5\times10^{-3}$ & $3.4\times10^{-3}$ & 0.026\\
+ & Singapore & 6.6 & $+0.26$ & $4.0\times10^{-4}$ & $1.6\times10^{-3}$ & 0.037\\
+ & China & 6.3 & $-0.12$ & $2.9\times10^{-3}$ & $2.1\times10^{-3}$ & 0.095\\
+ & Panama & 5.7 & $-0.06$ & $1.8\times10^{-4}$ & $2.1\times10^{-3}$ & 0.017\\
+ & Malta & 5.6 & $+0.53$ & $-1.3\times10^{-3}$ & $2.7\times10^{-3}$ & 0.010\\
+ & United Arab Emirates & 5.6 & $-0.48$ & $-8.5\times10^{-4}$ & $1.0\times10^{-3}$ & 0.027\\
+\addlinespace
+2021 & China, Hong Kong SAR & 15.9 & $+0.06$ & $-1.2\times10^{-3}$ & $4.2\times10^{-3}$ & 0.026\\
+ & China & 15.3 & $+0.30$ & $1.4\times10^{-2}$ & $3.7\times10^{-3}$ & 0.098\\
+ & Japan & 8.6 & $+0.10$ & $-1.2\times10^{-3}$ & $1.7\times10^{-3}$ & 0.029\\
+ & Singapore & 8.2 & $+0.14$ & $1.1\times10^{-3}$ & $2.2\times10^{-3}$ & 0.038\\
+ & Philippines & 7.5 & $+0.49$ & $-2.0\times10^{-3}$ & $2.3\times10^{-3}$ & 0.018\\
+ & Germany & 6.7 & $-0.23$ & $-1.9\times10^{-3}$ & $1.1\times10^{-3}$ & 0.024\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\caption{Corridors with the largest semi-elasticity $\partial a(t)/\partial\log\mathrm{cost}_{ik}$, with the semi-elasticity of the reverse corridor.}\label{tab:senscorr}
+\centering\footnotesize
+\begin{tabular}{rllrrr}
+\toprule
+Year & origin & destination & cost (USD/kg) & semi-elasticity & reverse\\
+\midrule
+2020 & Malta & China & 5.24 & $1.9\times10^{-3}$ & $2.2\times10^{-5}$\\
+ & China, Hong Kong SAR & United Arab Emirates & 3.24 & $-1.8\times10^{-3}$ & $6.2\times10^{-4}$\\
+ & Morocco & Ecuador & 3.72 & $7.3\times10^{-4}$ & $9.2\times10^{-7}$\\
+ & Dominican Republic & Egypt & 13.49 & $6.8\times10^{-4}$ & $-1.5\times10^{-6}$\\
+ & Colombia & Egypt & 2.41 & $6.5\times10^{-4}$ & $-1.6\times10^{-6}$\\
+ & United Arab Emirates & China, Hong Kong SAR & 4.23 & $6.2\times10^{-4}$ & $-1.8\times10^{-3}$\\
+ & Singapore & Morocco & 1.16 & $5.6\times10^{-4}$ & $2.1\times10^{-6}$\\
+ & Ghana & China, Hong Kong SAR & 7.50 & $5.4\times10^{-4}$ & $-8.6\times10^{-6}$\\
+\addlinespace
+2021 & Malta & China & 6.34 & $1.7\times10^{-3}$ & $2.7\times10^{-5}$\\
+ & China, Hong Kong SAR & United Arab Emirates & 3.46 & $-1.5\times10^{-3}$ & $2.5\times10^{-4}$\\
+ & Jamaica & China, Hong Kong SAR & 10.51 & $9.8\times10^{-4}$ & $2.2\times10^{-5}$\\
+ & Malta & China, Hong Kong SAR & 20.72 & $9.3\times10^{-4}$ & $9.4\times10^{-7}$\\
+ & Morocco & China, Hong Kong SAR & 3.01 & $8.8\times10^{-4}$ & $-4.7\times10^{-5}$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\caption{First-order predictions of the gradient strategy and re-solved changes. (i) $\Delta(G_{2020},G_{2021})$, with the cross-term change, its first-order prediction and the frozen-coupling remainder $R_P$ of Proposition~14(a). (ii) $a(2020)$. (iii) $\hat\tau(\mathrm{EAP},\mathrm{SSEA})$. Portfolio and branch-following values agreed in every case.}\label{tab:sensacc}
+\centering\footnotesize
+\begin{tabular}{lrrrrrrr}
+\toprule
+ & $B$ & predicted & realized & ratio & cross-term change & cross-term prediction & $R_P$\\
+\midrule
+(i) & 1 & $-1.54\times10^{-3}$ & $-1.34\times10^{-3}$ & 0.87 & $-1.34\times10^{-3}$ & $-1.49\times10^{-3}$ & $2.0\times10^{-4}$\\
+ & 4 & $-4.20\times10^{-3}$ & $-2.89\times10^{-3}$ & 0.69 & $-2.96\times10^{-3}$ & $-4.03\times10^{-3}$ & $1.2\times10^{-3}$\\
+ & 16 & $-1.10\times10^{-2}$ & $-7.45\times10^{-3}$ & 0.68 & $-7.60\times10^{-3}$ & $-1.04\times10^{-2}$ & $3.2\times10^{-3}$\\
+ & 64 & $-2.39\times10^{-2}$ & $-1.59\times10^{-2}$ & 0.66 & $-1.62\times10^{-2}$ & $-2.28\times10^{-2}$ & $7.7\times10^{-3}$\\
+ & 128 & $-3.36\times10^{-2}$ & $-2.16\times10^{-2}$ & 0.64 & $-2.23\times10^{-2}$ & $-3.20\times10^{-2}$ & $1.1\times10^{-2}$\\
+\addlinespace
+(ii) & 8 & $5.3\times10^{-3}$ & $6.6\times10^{-3}$ & 1.25 & & & \\
+ & 32 & $1.17\times10^{-2}$ & $1.47\times10^{-2}$ & 1.26 & & & \\
+ & 128 & $2.20\times10^{-2}$ & $3.05\times10^{-2}$ & 1.39 & & & \\
+ & 512 & $3.30\times10^{-2}$ & $5.03\times10^{-2}$ & 1.52 & & & \\
+ & 2048 & $3.95\times10^{-2}$ & $6.30\times10^{-2}$ & 1.59 & & & \\
+\addlinespace
+(iii) & 0.5 & $-0.014$ & $-0.027$ & 1.87 & & & \\
+ & 2 & $-0.043$ & $-0.064$ & 1.50 & & & \\
+ & 8 & $-0.101$ & $-0.136$ & 1.35 & & & \\
+ & 16 & $-0.146$ & $-0.186$ & 1.27 & & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\caption{Delta-method and Monte Carlo standard deviations of the anomaly scores and of two margins under independent multiplicative cost errors with log-scale standard deviation $\sigma_m$ (12 replications per level, all problems re-solved). Shift: Monte Carlo mean minus baseline. Rank: mean Monte Carlo rank.}\label{tab:sensunc}
+\centering\footnotesize
+\begin{tabular}{lrrrrrrrr}
+\toprule
+ & \multicolumn{4}{c}{$\sigma_m=0.10$} & \multicolumn{4}{c}{$\sigma_m=0.25$}\\
+\cmidrule(lr){2-5}\cmidrule(lr){6-9}
+ & delta s.d. & MC s.d. & shift & rank & delta s.d. & MC s.d. & shift & rank\\
+\midrule
+$a(2016)$ & 0.68 & 0.50 & 2.43 & 1.00 & 1.71 & 1.43 & 14.43 & 1.00\\
+$a(2017)$ & 0.51 & 0.39 & 2.41 & 4.92 & 1.27 & 1.25 & 13.53 & 4.58\\
+$a(2018)$ & 0.48 & 0.39 & 2.31 & 6.00 & 1.19 & 1.02 & 13.03 & 6.00\\
+$a(2019)$ & 0.48 & 0.44 & 2.34 & 3.00 & 1.20 & 1.22 & 13.16 & 3.08\\
+$a(2020)$ & 0.50 & 0.39 & 2.35 & 4.08 & 1.25 & 1.28 & 13.41 & 4.33\\
+$a(2021)$ & 0.59 & 0.54 & 2.38 & 2.00 & 1.47 & 1.29 & 14.59 & 2.00\\
+\addlinespace
+$a(2016)-a(2020)$ & 0.66 & 0.51 & 0.09 & -- & 1.64 & 2.30 & 1.01 & --\\
+$a(2021)-a(2020)$ & 0.60 & 0.52 & 0.03 & -- & 1.51 & 1.73 & 1.17 & --\\
+\bottomrule
+\multicolumn{9}{l}{\scriptsize All entries except ranks $\times10^{-3}$.}
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/figS7_uncertainty.pdf}
+\caption{(a) Monte Carlo against delta-method standard deviations of the anomaly scores. (b) Monte Carlo mean shift of each score in units of its Monte Carlo standard deviation.}\label{fig:sensunc}
+\end{figure}
+
+Dropping 5\% of the observed pairs at random in every year (four draws) left the anomaly ranking unchanged in every draw. The Spearman correlation of the corridor sensitivities with the baseline was at least 0.93 and that of the economy influence at least 0.975; at least 87\% of the hundred most influential corridors and 90\% of the ten most influential economies were retained in every year.
+
+\bibliographystyle{apalike}
+\bibliography{references}
+
+\end{document}

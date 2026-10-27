@@ -1,0 +1,7 @@
+# tested with Python 3.12.3 on one core (Intel Xeon 2.1 GHz), OpenBLAS 0.3.31 single thread
+numpy==2.4.4
+scipy==1.17.1
+pandas==3.0.2
+matplotlib==3.10.8
+numba==0.68.0
+pot==0.9.7.post1    # only for the cross-checks against POT
